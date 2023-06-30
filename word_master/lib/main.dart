@@ -94,8 +94,11 @@ class CreateWordTableButton extends StatelessWidget {
         Navigator.push(
           context,
           MaterialPageRoute(
-              builder: (context) =>
-                  WordTable(entries: db.all<DictionaryEntry>())),
+            builder: (context) => WordTable(
+              entries: db.all<DictionaryEntry>(),
+              db: db,
+            ),
+          ),
         );
       },
       child: const Icon(Icons.add),

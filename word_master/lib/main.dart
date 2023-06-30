@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:realm/realm.dart';
+import 'package:word_master/word_table.dart';
 
 import 'dictionary_entry.dart';
 
@@ -21,6 +22,9 @@ class MainApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       home: Scaffold(
+        appBar: AppBar(
+          title: Text('Word Master'),
+        ),
         body: Center(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,
@@ -31,6 +35,10 @@ class MainApp extends StatelessWidget {
               _buildReadButton(),
             ],
           ),
+        ),
+        floatingActionButton: Padding(
+          padding: const EdgeInsets.fromLTRB(0, 0, 30, 30),
+          child: CreateWordTableButton(db: db),
         ),
       ),
     );
@@ -69,6 +77,28 @@ class MainApp extends StatelessWidget {
         }
       },
       child: const Text('Read'),
+    );
+  }
+}
+
+class CreateWordTableButton extends StatelessWidget {
+  final Realm db;
+
+  const CreateWordTableButton({super.key, required this.db});
+
+  @override
+  Widget build(BuildContext context) {
+    return FloatingActionButton(
+      backgroundColor: Colors.orange,
+      onPressed: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+              builder: (context) =>
+                  WordTable(entries: db.all<DictionaryEntry>())),
+        );
+      },
+      child: const Icon(Icons.add),
     );
   }
 }

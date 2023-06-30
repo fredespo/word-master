@@ -56,15 +56,21 @@ class WordTable extends StatelessWidget {
 
   TableCell _buildTableCell(String wordOrPhrase, BuildContext context) {
     return TableCell(
-      child: InkWell(
-        onTap: () {
-          _showDefinitions(wordOrPhrase, context);
-        },
-        child: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: AutoSizeText(
-            wordOrPhrase,
-            maxLines: 1,
+      child: SizedBox(
+        height: 50,
+        child: InkWell(
+          onTap: () {
+            _showDefinitions(wordOrPhrase, context);
+          },
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Center(
+              child: AutoSizeText(
+                textAlign: TextAlign.center,
+                wordOrPhrase,
+                maxLines: 2,
+              ),
+            ),
           ),
         ),
       ),

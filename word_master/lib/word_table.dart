@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:math';
 
 import 'package:auto_size_text/auto_size_text.dart';
@@ -76,12 +77,36 @@ class WordTable extends StatelessWidget {
 
   void _showDefinitions(String wordOrPhrase, BuildContext context) {
     String definitions = db.find<DictionaryEntry>(wordOrPhrase)!.definitions;
+    Map<String, dynamic> jsonMap = jsonDecode(definitions);
     showDialog(
       context: context,
       builder: (context) {
         return AlertDialog(
           title: Text(wordOrPhrase),
-          content: Text(definitions),
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.5,
+            height: MediaQuery.of(context).size.height * 0.4,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: jsonMap.keys.map((key) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        key,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      ...List<Widget>.generate(
+                        jsonMap[key].length,
+                        (index) => Text('${index + 1}. ${jsonMap[key][index]}'),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
           actions: [
             TextButton(
               onPressed: () {

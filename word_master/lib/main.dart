@@ -47,24 +47,62 @@ class MainApp extends StatelessWidget {
   Widget _buildImportButton() {
     return ElevatedButton(
       onPressed: () async {
-        String functionUrl =
-            "https://rgnbhyf5h63zg2krd6mxtr7cga0qlnse.lambda-url.us-east-1.on.aws/";
-        http.Response response = await http.get(Uri.parse(functionUrl));
-        var entries = jsonDecode(response.body);
-        for (var entry in entries.entries) {
-          var wordOrPhrase = entry.key;
-          var definitions = entry.value;
-          db.write(() {
-            db.add(
-              DictionaryEntry(wordOrPhrase, json.encode(definitions)),
-              update: true,
-            );
-          });
-        }
-        print("Imported ${entries.length} entries");
+        _importDictionaryEntries(
+          progressCallback: (progress) {
+            print("Progress: $progress");
+          },
+        );
       },
       child: const Text('Import'),
     );
+  }
+
+  void _importDictionaryEntries({
+    int? total,
+    Function(double)? progressCallback,
+  }) async {
+    String functionUrl =
+        "https://rgnbhyf5h63zg2krd6mxtr7cga0qlnse.lambda-url.us-east-1.on.aws/";
+
+    int numPerCall = 1000;
+    if (total != null && total < numPerCall) {
+      numPerCall = total;
+    }
+    String? startKey;
+    num totalCount = 0;
+    num expectedTotal = total ?? 350000;
+    do {
+      Map<String, dynamic> args = {
+        'limit': numPerCall,
+      };
+      if (startKey != null) {
+        args['startKey'] = startKey;
+      }
+      var body = jsonEncode(args);
+      http.Response response = await http.post(Uri.parse(functionUrl),
+          headers: {"Content-Type": "application/json"}, body: body);
+      var responseBody = jsonDecode(response.body);
+      var entries = responseBody['definitions'];
+      startKey = responseBody.containsKey('start_key')
+          ? jsonEncode(responseBody['start_key'])
+          : null;
+
+      db.write(() {
+        for (var entry in entries.entries) {
+          var wordOrPhrase = entry.key;
+          var definitions = entry.value;
+          db.add(
+            DictionaryEntry(wordOrPhrase, json.encode(definitions)),
+            update: true,
+          );
+        }
+      });
+      totalCount += entries.length;
+      if (progressCallback != null) {
+        progressCallback(totalCount / expectedTotal);
+      }
+    } while (startKey != null && (total == null || totalCount < total));
+    print("Imported $totalCount entries");
   }
 
   Widget _buildReadButton() {

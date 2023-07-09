@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:realm/realm.dart';
 import 'package:word_master/dictionary_data_importer.dart';
+import 'package:word_master/word_collection_creator.dart';
 import 'package:word_master/word_table.dart';
 
 import 'dictionary_entry.dart';
@@ -69,14 +70,23 @@ class CreateWordTableButton extends StatelessWidget {
     return FloatingActionButton(
       backgroundColor: Colors.orange,
       onPressed: () {
-        Navigator.push(
-          context,
-          MaterialPageRoute(
-            builder: (context) => WordTable(
-              entries: db.all<DictionaryEntry>(),
-              db: db,
-            ),
-          ),
+        // show dialog for creating a new word collection
+        showDialog(
+          context: context,
+          builder: (context) {
+            return WordCollectionCreator(
+              onCreate: (String name, int wordCount) {
+                Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => WordTable(
+                        entries: db.all<DictionaryEntry>(),
+                        db: db,
+                      ),
+                    ));
+              },
+            );
+          },
         );
       },
       child: const Icon(Icons.add),

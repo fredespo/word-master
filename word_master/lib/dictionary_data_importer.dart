@@ -76,7 +76,7 @@ class _DictionaryDataImporterState extends State<DictionaryDataImporter> {
         'limit': numPerCall,
       };
       if (startKey != null) {
-        args['startKey'] = startKey;
+        args['start_key'] = startKey;
       }
       var body = jsonEncode(args);
       http.Response response = await http.post(Uri.parse(functionUrl),
@@ -84,7 +84,7 @@ class _DictionaryDataImporterState extends State<DictionaryDataImporter> {
       var responseBody = jsonDecode(response.body);
       var entries = responseBody['definitions'];
       startKey = responseBody.containsKey('start_key')
-          ? jsonEncode(responseBody['start_key'])
+          ? responseBody['start_key']
           : null;
 
       widget.db.write(() {

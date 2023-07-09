@@ -75,6 +75,7 @@ class CreateWordTableButton extends StatelessWidget {
           context: context,
           builder: (context) {
             return WordCollectionCreator(
+              entries: db.all<DictionaryEntry>(),
               onCreate: (String name, int wordCount) {
                 Navigator.push(
                     context,

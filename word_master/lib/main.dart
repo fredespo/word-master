@@ -59,20 +59,33 @@ class MainApp extends StatelessWidget {
           child: WordCollectionsList(
               wordCollections: db.all<WordCollectionData>(),
               onTap: (context, wordCollection) {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => WordCollection(
-                      data: wordCollection,
-                      db: db,
-                    ),
-                  ),
-                );
+                _openWordCollection(context, wordCollection);
               }),
         ),
         floatingActionButton: Padding(
           padding: const EdgeInsets.fromLTRB(0, 0, 30, 30),
-          child: CreateWordTableButton(db: db),
+          child: Builder(builder: (context) {
+            return CreateWordTableButton(
+                db: db,
+                onNewWordCollection: (wordCollectionData) {
+                  _openWordCollection(context, wordCollectionData);
+                });
+          }),
+        ),
+      ),
+    );
+  }
+
+  void _openWordCollection(
+    BuildContext context,
+    WordCollectionData wordCollectionData,
+  ) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => WordCollection(
+          data: wordCollectionData,
+          db: db,
         ),
       ),
     );
@@ -81,8 +94,13 @@ class MainApp extends StatelessWidget {
 
 class CreateWordTableButton extends StatelessWidget {
   final Realm db;
+  final Function(WordCollectionData wordCollectionData) onNewWordCollection;
 
-  const CreateWordTableButton({super.key, required this.db});
+  const CreateWordTableButton({
+    super.key,
+    required this.db,
+    required this.onNewWordCollection,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -96,11 +114,13 @@ class CreateWordTableButton extends StatelessWidget {
             return WordCollectionCreator(
               entries: db.all<DictionaryEntry>(),
               onCreate: (String name, int wordCount) {
-                db.write(() => db.add(WordCollectionData(
-                      name,
-                      DateTime.now(),
-                      words: getRandomWords(wordCount),
-                    )));
+                var wordCollectionData = WordCollectionData(
+                  name,
+                  DateTime.now(),
+                  words: getRandomWords(wordCount),
+                );
+                db.write(() => db.add(wordCollectionData));
+                onNewWordCollection(wordCollectionData);
               },
             );
           },

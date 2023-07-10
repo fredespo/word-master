@@ -8,8 +8,13 @@ import 'dictionary_entry.dart';
 
 class DictionaryDataImporter extends StatefulWidget {
   final Realm db;
+  final Function(num) onImportComplete;
 
-  const DictionaryDataImporter({super.key, required this.db});
+  const DictionaryDataImporter({
+    super.key,
+    required this.db,
+    required this.onImportComplete,
+  });
 
   @override
   State<DictionaryDataImporter> createState() => _DictionaryDataImporterState();
@@ -64,7 +69,7 @@ class _DictionaryDataImporterState extends State<DictionaryDataImporter> {
     String functionUrl =
         "https://rgnbhyf5h63zg2krd6mxtr7cga0qlnse.lambda-url.us-east-1.on.aws/";
 
-    int numPerCall = 1000;
+    int numPerCall = 10000;
     if (total != null && total < numPerCall) {
       numPerCall = total;
     }
@@ -102,7 +107,7 @@ class _DictionaryDataImporterState extends State<DictionaryDataImporter> {
         progressCallback(totalCount / expectedTotal);
       }
     } while (startKey != null && (total == null || totalCount < total));
-    print("Imported $totalCount entries");
+    widget.onImportComplete(totalCount);
   }
 
   Widget _buildProgressIndicator() {

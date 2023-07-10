@@ -1,13 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:realm/realm.dart';
 
 import 'dictionary_data_importer.dart';
 import 'dictionary_entry.dart';
 
-class DictionaryDataManager extends StatelessWidget {
+class DictionaryDataManager extends StatefulWidget {
   final Realm db;
 
   const DictionaryDataManager({super.key, required this.db});
+
+  @override
+  State<DictionaryDataManager> createState() => _DictionaryDataManagerState();
+}
+
+class _DictionaryDataManagerState extends State<DictionaryDataManager> {
+  final NumberFormat _numberFormat = NumberFormat('#,##0');
+  num _entryCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _entryCount = widget.db.all<DictionaryEntry>().length;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,25 +35,21 @@ class DictionaryDataManager extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.center,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            DictionaryDataImporter(db: db),
+            Text(
+              "You have ${_numberFormat.format(_entryCount)} entries in your dictionary.",
+            ),
             const SizedBox(height: 20),
-            _buildReadButton(),
+            DictionaryDataImporter(
+              db: widget.db,
+              onImportComplete: (count) {
+                setState(() {
+                  _entryCount = count;
+                });
+              },
+            ),
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildReadButton() {
-    return ElevatedButton(
-      onPressed: () async {
-        var all = db.all<DictionaryEntry>();
-        for (var entry in all) {
-          print(entry.wordOrPhrase);
-          print(entry.definitions);
-        }
-      },
-      child: const Text('Read'),
     );
   }
 }

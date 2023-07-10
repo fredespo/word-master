@@ -80,7 +80,11 @@ class WordCollection extends StatelessWidget {
   }
 
   void _showDefinitions(String wordOrPhrase, BuildContext context) {
-    String definitions = db.find<DictionaryEntry>(wordOrPhrase)!.definitions;
+    var dictionaryEntry = db.find<DictionaryEntry>(wordOrPhrase);
+    if (dictionaryEntry == null) {
+      return;
+    }
+    String definitions = dictionaryEntry.definitions;
     Map<String, dynamic> jsonMap = jsonDecode(definitions);
     showDialog(
       context: context,

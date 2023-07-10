@@ -4,16 +4,17 @@ import 'dart:math';
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:realm/realm.dart';
+import 'package:word_master/word_collection_data.dart';
 
 import 'dictionary_entry.dart';
 
-class WordTable extends StatelessWidget {
-  final RealmResults<DictionaryEntry> entries;
+class WordCollection extends StatelessWidget {
+  final WordCollectionData data;
   final Realm db;
 
-  const WordTable({
+  const WordCollection({
     super.key,
-    required this.entries,
+    required this.data,
     required this.db,
   });
 
@@ -29,13 +30,14 @@ class WordTable extends StatelessWidget {
 
   Widget _buildBody() {
     return ListView.builder(
-      itemCount: (entries.length / 6).ceil(), // Number of rows
+      itemCount: (data.words.length / 6).ceil(), // Number of rows
       itemBuilder: (context, index) {
         List<TableCell> currentRowCells = [];
 
-        for (int i = index * 6; i < min((index + 1) * 6, entries.length); i++) {
-          currentRowCells
-              .add(_buildTableCell(entries[i].wordOrPhrase, context));
+        for (int i = index * 6;
+            i < min((index + 1) * 6, data.words.length);
+            i++) {
+          currentRowCells.add(_buildTableCell(data.words[i], context));
         }
 
         while (currentRowCells.length < 6) {

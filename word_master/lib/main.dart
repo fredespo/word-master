@@ -1,10 +1,11 @@
-import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
-import 'package:http/http.dart' as http;
 import 'package:realm/realm.dart';
-import 'package:word_master/dictionary_data_importer.dart';
+import 'package:word_master/dictionary_data_manager.dart';
 import 'package:word_master/word_collection_creator.dart';
+import 'package:word_master/word_collection_data.dart';
+import 'package:word_master/word_collections_list.dart';
 import 'package:word_master/word_table.dart';
 
 import 'dictionary_entry.dart';
@@ -16,6 +17,7 @@ void main() {
 class MainApp extends StatelessWidget {
   final Realm db = Realm(Configuration.local([
     DictionaryEntry.schema,
+    WordCollectionData.schema,
   ]));
 
   MainApp({super.key});
@@ -23,39 +25,56 @@ class MainApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       home: Scaffold(
         appBar: AppBar(
-          title: Text('Word Master'),
+          title: const Text('Word Master'),
+          actions: <Widget>[
+            Builder(
+              builder: (context) => PopupMenuButton(
+                onSelected: (value) {
+                  if (value == 'dictionary_data') {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => DictionaryDataManager(db: db),
+                      ),
+                    );
+                  }
+                },
+                itemBuilder: (BuildContext context) {
+                  return [
+                    const PopupMenuItem(
+                      value: 'dictionary_data',
+                      child: Text('Dictionary Data'),
+                    ),
+                  ];
+                },
+              ),
+            ),
+          ],
         ),
-        body: Center(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              DictionaryDataImporter(db: db),
-              const SizedBox(height: 20),
-              _buildReadButton(),
-            ],
-          ),
+        body: SizedBox(
+          height: 300,
+          child: WordCollectionsList(
+              wordCollections: db.all<WordCollectionData>(),
+              onTap: (context, wordCollection) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => WordCollection(
+                      data: wordCollection,
+                      db: db,
+                    ),
+                  ),
+                );
+              }),
         ),
         floatingActionButton: Padding(
           padding: const EdgeInsets.fromLTRB(0, 0, 30, 30),
           child: CreateWordTableButton(db: db),
         ),
       ),
-    );
-  }
-
-  Widget _buildReadButton() {
-    return ElevatedButton(
-      onPressed: () async {
-        var all = db.all<DictionaryEntry>();
-        for (var entry in all) {
-          print(entry.wordOrPhrase);
-          print(entry.definitions);
-        }
-      },
-      child: const Text('Read'),
     );
   }
 }
@@ -77,14 +96,11 @@ class CreateWordTableButton extends StatelessWidget {
             return WordCollectionCreator(
               entries: db.all<DictionaryEntry>(),
               onCreate: (String name, int wordCount) {
-                Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => WordTable(
-                        entries: db.all<DictionaryEntry>(),
-                        db: db,
-                      ),
-                    ));
+                db.write(() => db.add(WordCollectionData(
+                      name,
+                      DateTime.now(),
+                      words: getRandomWords(wordCount),
+                    )));
               },
             );
           },
@@ -92,5 +108,15 @@ class CreateWordTableButton extends StatelessWidget {
       },
       child: const Icon(Icons.add),
     );
+  }
+
+  List<String> getRandomWords(int count) {
+    var all = db.all<DictionaryEntry>();
+    var random = Random();
+    var words = <String>[];
+    for (int i = 0; i < count; i++) {
+      words.add(all[random.nextInt(all.length)].wordOrPhrase);
+    }
+    return words;
   }
 }

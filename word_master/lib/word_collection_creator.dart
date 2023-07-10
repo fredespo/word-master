@@ -63,7 +63,7 @@ class _WordCollectionCreatorState extends State<WordCollectionCreator> {
                 const Text('Number of words:', style: TextStyle(fontSize: 16)),
                 SliderWithValue(
                   min: 1,
-                  max: 350000,
+                  max: maxNumberOfWords,
                   onChanged: (int value) {
                     setState(() {
                       numberOfWords = value;

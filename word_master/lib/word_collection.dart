@@ -22,7 +22,8 @@ class WordCollection extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Word Table'),
+        title:
+            Text(data.name.isNotEmpty ? data.name : 'Untitled Word Collection'),
       ),
       body: _buildBody(),
     );

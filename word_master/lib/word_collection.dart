@@ -29,31 +29,37 @@ class WordCollection extends StatelessWidget {
   }
 
   Widget _buildBody() {
-    return ListView.builder(
-      itemCount: (data.words.length / 6).ceil(), // Number of rows
-      itemBuilder: (context, index) {
-        List<TableCell> currentRowCells = [];
+    return LayoutBuilder(builder: (context, constraints) {
+      final screenWidth = constraints.maxWidth;
+      final numColumns =
+          (screenWidth / 100).floor(); // adjust the column width here
 
-        for (int i = index * 6;
-            i < min((index + 1) * 6, data.words.length);
-            i++) {
-          currentRowCells.add(_buildTableCell(data.words[i], context));
-        }
+      return ListView.builder(
+        itemCount: (data.words.length / numColumns).ceil(), // Number of rows
+        itemBuilder: (context, index) {
+          List<TableCell> currentRowCells = [];
 
-        while (currentRowCells.length < 6) {
-          currentRowCells.add(_buildTableCell('', context));
-        }
+          for (int i = index * numColumns;
+              i < min((index + 1) * numColumns, data.words.length);
+              i++) {
+            currentRowCells.add(_buildTableCell(data.words[i], context));
+          }
 
-        return Table(
-          border: TableBorder.all(),
-          children: [
-            TableRow(
-              children: currentRowCells,
-            ),
-          ],
-        );
-      },
-    );
+          while (currentRowCells.length < numColumns) {
+            currentRowCells.add(_buildTableCell('', context));
+          }
+
+          return Table(
+            border: TableBorder.all(),
+            children: [
+              TableRow(
+                children: currentRowCells,
+              ),
+            ],
+          );
+        },
+      );
+    });
   }
 
   TableCell _buildTableCell(String wordOrPhrase, BuildContext context) {

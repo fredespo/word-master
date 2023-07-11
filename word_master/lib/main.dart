@@ -54,14 +54,11 @@ class MainApp extends StatelessWidget {
             ),
           ],
         ),
-        body: SizedBox(
-          height: 300,
-          child: WordCollectionsList(
-              wordCollections: db.all<WordCollectionData>(),
-              onTap: (context, wordCollection) {
-                _openWordCollection(context, wordCollection);
-              }),
-        ),
+        body: WordCollectionsList(
+            wordCollections: db.all<WordCollectionData>(),
+            onTap: (context, wordCollection) {
+              _openWordCollection(context, wordCollection);
+            }),
         floatingActionButton: Padding(
           padding: const EdgeInsets.fromLTRB(0, 0, 30, 30),
           child: Builder(builder: (context) {

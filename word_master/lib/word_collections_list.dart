@@ -19,7 +19,10 @@ class WordCollectionsList extends StatelessWidget {
       stream: wordCollections.changes,
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
+          return const SizedBox(
+            height: 300,
+            child: Center(child: CircularProgressIndicator()),
+          );
         }
         return ListView.builder(
           itemCount: wordCollections.length,

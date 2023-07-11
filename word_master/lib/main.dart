@@ -6,7 +6,7 @@ import 'package:word_master/dictionary_data_manager.dart';
 import 'package:word_master/word_collection_creator.dart';
 import 'package:word_master/word_collection_data.dart';
 import 'package:word_master/word_collections_list.dart';
-import 'package:word_master/word_table.dart';
+import 'package:word_master/word_collection.dart';
 
 import 'dictionary_entry.dart';
 
@@ -27,6 +27,7 @@ class MainApp extends StatelessWidget {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
+        backgroundColor: Colors.grey.shade200,
         appBar: AppBar(
           title: const Text('Word Master'),
           actions: <Widget>[

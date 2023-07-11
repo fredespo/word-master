@@ -5,6 +5,7 @@ import 'package:word_master/word_collection_data.dart';
 class WordCollectionCard extends StatelessWidget {
   final WordCollectionData wordCollection;
   final Function(WordCollectionData) onTap;
+  final Function(WordCollectionData) onDismissed;
   final double widthFactor;
   final NumberFormat _numberFormat = NumberFormat('#,##0');
 
@@ -13,24 +14,47 @@ class WordCollectionCard extends StatelessWidget {
     required this.wordCollection,
     required this.onTap,
     this.widthFactor = 1.0,
+    required this.onDismissed,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      child: FractionallySizedBox(
-        widthFactor: widthFactor,
-        child: Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: _buildBody(),
+    return Center(
+      child: Dismissible(
+        key: Key(ObjectKey(wordCollection).toString()),
+        direction: DismissDirection.endToStart,
+        onDismissed: (direction) {
+          onDismissed(wordCollection);
+        },
+        background: Container(
+          color: Colors.red,
+          child: const Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: EdgeInsets.only(right: 16),
+              child: Icon(
+                Icons.delete,
+                color: Colors.white,
+              ),
             ),
           ),
         ),
+        child: GestureDetector(
+          child: FractionallySizedBox(
+            widthFactor: widthFactor,
+            child: Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: _buildBody(),
+                ),
+              ),
+            ),
+          ),
+          onTap: () => onTap(wordCollection),
+        ),
       ),
-      onTap: () => onTap(wordCollection),
     );
   }
 

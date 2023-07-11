@@ -56,10 +56,14 @@ class MainApp extends StatelessWidget {
           ],
         ),
         body: WordCollectionsList(
-            wordCollections: db.all<WordCollectionData>(),
-            onTap: (context, wordCollection) {
-              _openWordCollection(context, wordCollection);
-            }),
+          wordCollections: db.all<WordCollectionData>(),
+          onTap: (context, wordCollection) {
+            _openWordCollection(context, wordCollection);
+          },
+          onDismissed: (WordCollectionData wordCollection) {
+            db.write(() => db.delete(wordCollection));
+          },
+        ),
         floatingActionButton: Padding(
           padding: const EdgeInsets.fromLTRB(0, 0, 30, 30),
           child: Builder(builder: (context) {

@@ -6,11 +6,13 @@ import 'package:word_master/word_collection_data.dart';
 class WordCollectionsList extends StatelessWidget {
   final RealmResults<WordCollectionData> wordCollections;
   final Function(BuildContext, WordCollectionData) onTap;
+  final Function(WordCollectionData) onDismissed;
 
   const WordCollectionsList({
     super.key,
     required this.onTap,
     required this.wordCollections,
+    required this.onDismissed,
   });
 
   @override
@@ -34,6 +36,9 @@ class WordCollectionsList extends StatelessWidget {
                 widthFactor: 0.7,
                 onTap: (evaluation) {
                   onTap(context, evaluation);
+                },
+                onDismissed: (WordCollectionData wordCollection) {
+                  onDismissed(wordCollection);
                 },
               ),
             );

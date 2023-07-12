@@ -107,7 +107,6 @@ class CreateWordTableButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FloatingActionButton(
-      backgroundColor: Colors.orange,
       onPressed: () {
         // show dialog for creating a new word collection
         showDialog(

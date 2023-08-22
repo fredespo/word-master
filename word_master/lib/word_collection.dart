@@ -1,137 +1,152 @@
-import 'dart:convert';
 import 'dart:math';
 
-import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:realm/realm.dart';
 import 'package:word_master/word_collection_data.dart';
+import 'package:word_master/word_collection_page.dart';
+import 'package:visibility_detector/visibility_detector.dart';
 
-import 'dictionary_entry.dart';
-
-class WordCollection extends StatelessWidget {
+class WordCollection extends StatefulWidget {
   final WordCollectionData data;
   final Realm db;
+  final Color bgColor = const Color.fromARGB(255, 134, 134, 134);
+  final int numColumns = 6;
+  final int numWordsPerPage = 192;
+  final Map<int, Widget> pages = {};
 
-  const WordCollection({
+  WordCollection({
     super.key,
     required this.data,
     required this.db,
   });
 
   @override
+  State<WordCollection> createState() => _WordCollectionState();
+}
+
+class _WordCollectionState extends State<WordCollection> {
+  int _currentPageNum = 1;
+  bool _listScrolledRecently = false;
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title:
-            Text(data.name.isNotEmpty ? data.name : 'Untitled Word Collection'),
+        title: Text(widget.data.name.isNotEmpty
+            ? widget.data.name
+            : 'Untitled Word Collection'),
       ),
       body: _buildBody(),
     );
   }
 
   Widget _buildBody() {
-    return LayoutBuilder(builder: (context, constraints) {
-      final screenWidth = constraints.maxWidth;
-      final numColumns =
-          (screenWidth / 100).floor(); // adjust the column width here
-
-      return ListView.builder(
-        itemCount: (data.words.length / numColumns).ceil(), // Number of rows
-        itemBuilder: (context, index) {
-          List<TableCell> currentRowCells = [];
-
-          for (int i = index * numColumns;
-              i < min((index + 1) * numColumns, data.words.length);
-              i++) {
-            currentRowCells.add(_buildTableCell(data.words[i], context));
-          }
-
-          while (currentRowCells.length < numColumns) {
-            currentRowCells.add(_buildTableCell('', context));
-          }
-
-          return Table(
-            border: TableBorder.all(),
-            children: [
-              TableRow(
-                children: currentRowCells,
-              ),
-            ],
-          );
-        },
-      );
-    });
+    return Stack(
+      children: [
+        _buildPages(),
+        Positioned(
+          top: 0,
+          left: 0,
+          right: 0,
+          child: _buildPageIndicator(),
+        ),
+      ],
+    );
   }
 
-  TableCell _buildTableCell(String wordOrPhrase, BuildContext context) {
-    return TableCell(
-      child: SizedBox(
-        height: 50,
-        child: InkWell(
-          onTap: () {
-            _showDefinitions(wordOrPhrase, context);
-          },
-          child: Padding(
-            padding: const EdgeInsets.all(8.0),
-            child: Center(
-              child: AutoSizeText(
-                textAlign: TextAlign.center,
-                wordOrPhrase,
-                maxLines: 2,
-              ),
+  Widget _buildPageIndicator() {
+    Widget indicator = Container(
+      color: widget.bgColor.withOpacity(0.8),
+      child: Align(
+        alignment: Alignment.center,
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Text(
+            "Page: $_currentPageNum",
+            style: const TextStyle(
+              color: Colors.black,
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
             ),
           ),
         ),
       ),
     );
+    return _listScrolledRecently
+        ? indicator
+        : TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 1, end: 0),
+            duration: const Duration(milliseconds: 200),
+            builder: (BuildContext context, double opacity, Widget? child) {
+              return Opacity(
+                opacity: opacity,
+                child: indicator,
+              );
+            },
+          );
   }
 
-  void _showDefinitions(String wordOrPhrase, BuildContext context) {
-    var dictionaryEntry = db.find<DictionaryEntry>(wordOrPhrase);
-    if (dictionaryEntry == null) {
-      return;
-    }
-    String definitions = dictionaryEntry.definitions;
-    Map<String, dynamic> jsonMap = jsonDecode(definitions);
-    showDialog(
-      context: context,
-      builder: (context) {
-        return AlertDialog(
-          title: Text(wordOrPhrase),
-          content: SizedBox(
-            width: MediaQuery.of(context).size.width * 0.5,
-            height: MediaQuery.of(context).size.height * 0.4,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: jsonMap.keys.map((key) {
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        key,
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      ...List<Widget>.generate(
-                        jsonMap[key].length,
-                        (index) => Text('${index + 1}. ${jsonMap[key][index]}'),
-                      ),
-                    ],
-                  );
-                }).toList(),
-              ),
-            ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.pop(context);
-              },
-              child: const Text('Close'),
-            ),
-          ],
+  Widget _buildPages() {
+    return NotificationListener<ScrollNotification>(
+      onNotification: (notification) {
+        if (notification is ScrollUpdateNotification) {
+          setState(() {
+            _listScrolledRecently = true;
+            Future.delayed(const Duration(milliseconds: 2000), () {
+              setState(() {
+                _listScrolledRecently = false;
+              });
+            });
+          });
+        }
+        return true;
+      },
+      child: InteractiveViewer(
+        child: Container(
+          decoration: BoxDecoration(color: widget.bgColor),
+          child: _buildPageList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPageList() {
+    return ListView.builder(
+      itemCount: (widget.data.words.length / widget.numWordsPerPage).ceil(),
+      itemBuilder: (context, index) {
+        Widget item = VisibilityDetector(
+          key: Key('page_$index'),
+          onVisibilityChanged: (VisibilityInfo info) {
+            if (info.visibleFraction > 0.5) {
+              setState(() {
+                _currentPageNum = index + 1;
+              });
+            }
+          },
+          child: _buildPage(index),
         );
+        return item;
       },
     );
+  }
+
+  Widget _buildPage(int index) {
+    if (widget.pages.containsKey(index)) {
+      return widget.pages[index]!;
+    }
+
+    int startIndex = index * widget.numWordsPerPage;
+    int endIndex =
+        min((index + 1) * widget.numWordsPerPage, widget.data.words.length);
+    Widget page = WordCollectionPage(
+      numColumns: widget.numColumns,
+      words: widget.data.words,
+      db: widget.db,
+      startIndex: startIndex,
+      endIndex: endIndex,
+      numTotalEntries: widget.numWordsPerPage,
+    );
+    widget.pages[index] = page;
+    return page;
   }
 }

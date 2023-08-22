@@ -2,13 +2,17 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:realm/realm.dart';
-import 'package:word_master/word_collection_data.dart';
+import 'package:word_master/word_collection_action_menu.dart';
 import 'package:word_master/word_collection_page.dart';
 import 'package:visibility_detector/visibility_detector.dart';
 
 class WordCollection extends StatefulWidget {
-  final WordCollectionData data;
   final Realm db;
+  final String name;
+  final List<String> words;
+  final Set<String> favorites;
+  final Function() onViewFavorites;
+  final Function() onViewAll;
   final Color bgColor = const Color.fromARGB(255, 134, 134, 134);
   final int numColumns = 6;
   final int numWordsPerPage = 192;
@@ -16,8 +20,12 @@ class WordCollection extends StatefulWidget {
 
   WordCollection({
     super.key,
-    required this.data,
     required this.db,
+    required this.name,
+    required this.words,
+    required this.favorites,
+    required this.onViewFavorites,
+    required this.onViewAll,
   });
 
   @override
@@ -32,9 +40,14 @@ class _WordCollectionState extends State<WordCollection> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.data.name.isNotEmpty
-            ? widget.data.name
-            : 'Untitled Word Collection'),
+        title: Text(
+            widget.name.isNotEmpty ? widget.name : 'Untitled Word Collection'),
+        actions: [
+          WordCollectionActionMenu(
+            onViewFaves: widget.onViewFavorites,
+            onViewAll: widget.onViewAll,
+          )
+        ],
       ),
       body: _buildBody(),
     );
@@ -112,7 +125,7 @@ class _WordCollectionState extends State<WordCollection> {
 
   Widget _buildPageList() {
     return ListView.builder(
-      itemCount: (widget.data.words.length / widget.numWordsPerPage).ceil(),
+      itemCount: (widget.words.length / widget.numWordsPerPage).ceil(),
       itemBuilder: (context, index) {
         Widget item = VisibilityDetector(
           key: Key('page_$index'),
@@ -137,14 +150,15 @@ class _WordCollectionState extends State<WordCollection> {
 
     int startIndex = index * widget.numWordsPerPage;
     int endIndex =
-        min((index + 1) * widget.numWordsPerPage, widget.data.words.length);
+        min((index + 1) * widget.numWordsPerPage, widget.words.length);
     Widget page = WordCollectionPage(
       numColumns: widget.numColumns,
-      words: widget.data.words,
+      words: widget.words,
       db: widget.db,
       startIndex: startIndex,
       endIndex: endIndex,
       numTotalEntries: widget.numWordsPerPage,
+      favorites: widget.favorites,
     );
     widget.pages[index] = page;
     return page;

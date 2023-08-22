@@ -7,4 +7,5 @@ class _WordCollectionData {
   late String name;
   late DateTime createdOn;
   late List<String> words;
+  late Set<String> favorites;
 }

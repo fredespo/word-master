@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
 import 'package:realm/realm.dart';
+import 'package:word_master/word_collection_page_cell.dart';
 
 import 'dictionary_entry.dart';
 
@@ -13,6 +13,7 @@ class WordCollectionPage extends StatelessWidget {
   final int endIndex;
   final int numTotalEntries;
   final Realm db;
+  final Set<String> favorites;
 
   const WordCollectionPage({
     super.key,
@@ -22,6 +23,7 @@ class WordCollectionPage extends StatelessWidget {
     required this.startIndex,
     required this.endIndex,
     required this.numTotalEntries,
+    required this.favorites,
   });
 
   @override
@@ -48,11 +50,13 @@ class WordCollectionPage extends StatelessWidget {
       int colNum = i % numColumns;
       Color bgColor = colNum % 2 == 0 ? Colors.grey.shade100 : Colors.white;
       String word = i < endIndex ? words[i] : '';
-      currentRowCells.add(_buildTableCell(word, context, bgColor));
+      currentRowCells.add(
+          TableCell(child: _buildTableCellContent(word, context, bgColor)));
     }
 
     while (currentRowCells.length < numColumns) {
-      currentRowCells.add(_buildTableCell('', context, Colors.white));
+      currentRowCells.add(
+          TableCell(child: _buildTableCellContent('', context, Colors.white)));
     }
 
     return Table(
@@ -65,36 +69,28 @@ class WordCollectionPage extends StatelessWidget {
     );
   }
 
-  TableCell _buildTableCell(
+  Widget _buildTableCellContent(
     String wordOrPhrase,
     BuildContext context,
     Color bgColor,
   ) {
-    return TableCell(
-      child: Container(
-        decoration: BoxDecoration(
-          color: bgColor,
-        ),
-        child: SizedBox(
-          height: 50,
-          child: InkWell(
-            onTap: () {
-              _showDefinitions(wordOrPhrase, context);
-            },
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Center(
-                child: AutoSizeText(
-                  textAlign: TextAlign.center,
-                  wordOrPhrase,
-                  maxLines: 2,
-                  style: const TextStyle(fontSize: 12),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
+    return WordCollectionPageCell(
+      wordOrPhrase: wordOrPhrase,
+      bgColor: bgColor,
+      isFavorite: favorites.contains(wordOrPhrase),
+      showDefinitions: (wordOrPhrase) {
+        _showDefinitions(wordOrPhrase, context);
+      },
+      onMarkedFavorite: (wordOrPhrase) {
+        db.write(() {
+          favorites.add(wordOrPhrase);
+        });
+      },
+      onUnmarkedFavorite: (wordOrPhrase) {
+        db.write(() {
+          favorites.remove(wordOrPhrase);
+        });
+      },
     );
   }
 
@@ -145,5 +141,13 @@ class WordCollectionPage extends StatelessWidget {
         );
       },
     );
+  }
+
+  void onFavoriteToggle(String wordOrPhrase) {
+    db.write(() {
+      if (!favorites.add(wordOrPhrase)) {
+        favorites.remove(wordOrPhrase);
+      }
+    });
   }
 }

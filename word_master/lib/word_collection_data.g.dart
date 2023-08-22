@@ -12,11 +12,14 @@ class WordCollectionData extends _WordCollectionData
     String name,
     DateTime createdOn, {
     Iterable<String> words = const [],
+    Set<String> favorites = const {},
   }) {
     RealmObjectBase.set(this, 'name', name);
     RealmObjectBase.set(this, 'createdOn', createdOn);
     RealmObjectBase.set<RealmList<String>>(
         this, 'words', RealmList<String>(words));
+    RealmObjectBase.set<RealmSet<String>>(
+        this, 'favorites', RealmSet<String>(favorites));
   }
 
   WordCollectionData._();
@@ -41,6 +44,13 @@ class WordCollectionData extends _WordCollectionData
       throw RealmUnsupportedSetError();
 
   @override
+  RealmSet<String> get favorites =>
+      RealmObjectBase.get<String>(this, 'favorites') as RealmSet<String>;
+  @override
+  set favorites(covariant RealmSet<String> value) =>
+      throw RealmUnsupportedSetError();
+
+  @override
   Stream<RealmObjectChanges<WordCollectionData>> get changes =>
       RealmObjectBase.getChanges<WordCollectionData>(this);
 
@@ -58,6 +68,8 @@ class WordCollectionData extends _WordCollectionData
       SchemaProperty('createdOn', RealmPropertyType.timestamp),
       SchemaProperty('words', RealmPropertyType.string,
           collectionType: RealmCollectionType.list),
+      SchemaProperty('favorites', RealmPropertyType.string,
+          collectionType: RealmCollectionType.set),
     ]);
   }
 }

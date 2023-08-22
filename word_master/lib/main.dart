@@ -15,10 +15,13 @@ void main() {
 }
 
 class MainApp extends StatelessWidget {
-  final Realm db = Realm(Configuration.local([
-    DictionaryEntry.schema,
-    WordCollectionData.schema,
-  ]));
+  final Realm db = Realm(Configuration.local(
+    [
+      DictionaryEntry.schema,
+      WordCollectionData.schema,
+    ],
+    schemaVersion: 2,
+  ));
 
   MainApp({super.key});
 
@@ -58,7 +61,7 @@ class MainApp extends StatelessWidget {
         body: WordCollectionsList(
           wordCollections: db.all<WordCollectionData>(),
           onTap: (context, wordCollection) {
-            _openWordCollection(context, wordCollection);
+            _openWordCollection(context, wordCollection, false);
           },
           onDismissed: (WordCollectionData wordCollection) {
             db.write(() => db.delete(wordCollection));
@@ -70,7 +73,7 @@ class MainApp extends StatelessWidget {
             return CreateWordTableButton(
                 db: db,
                 onNewWordCollection: (wordCollectionData) {
-                  _openWordCollection(context, wordCollectionData);
+                  _openWordCollection(context, wordCollectionData, false);
                 });
           }),
         ),
@@ -81,14 +84,26 @@ class MainApp extends StatelessWidget {
   void _openWordCollection(
     BuildContext context,
     WordCollectionData wordCollectionData,
+    bool onlyFavorites,
   ) {
     Navigator.push(
       context,
       MaterialPageRoute(
         builder: (context) => WordCollection(
-          data: wordCollectionData,
-          db: db,
-        ),
+            db: db,
+            name: wordCollectionData.name,
+            words: onlyFavorites
+                ? wordCollectionData.favorites.toList()
+                : wordCollectionData.words,
+            favorites: wordCollectionData.favorites,
+            onViewFavorites: () {
+              Navigator.pop(context);
+              _openWordCollection(context, wordCollectionData, true);
+            },
+            onViewAll: () {
+              Navigator.pop(context);
+              _openWordCollection(context, wordCollectionData, false);
+            }),
       ),
     );
   }

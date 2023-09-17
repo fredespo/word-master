@@ -1,7 +1,10 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:realm/realm.dart';
-import 'package:word_master/definitions_dialog.dart';
 import 'package:word_master/word_collection_page_cell.dart';
+
+import 'dictionary_entry.dart';
 
 class WordCollectionPage extends StatelessWidget {
   final int numColumns;
@@ -11,7 +14,6 @@ class WordCollectionPage extends StatelessWidget {
   final int numTotalEntries;
   final Realm db;
   final Set<String> favorites;
-  final String dictionaryId;
 
   const WordCollectionPage({
     super.key,
@@ -22,7 +24,6 @@ class WordCollectionPage extends StatelessWidget {
     required this.endIndex,
     required this.numTotalEntries,
     required this.favorites,
-    required this.dictionaryId,
   });
 
   @override
@@ -94,13 +95,49 @@ class WordCollectionPage extends StatelessWidget {
   }
 
   void _showDefinitions(String wordOrPhrase, BuildContext context) {
+    var dictionaryEntry = db.find<DictionaryEntry>(wordOrPhrase);
+    if (dictionaryEntry == null) {
+      return;
+    }
+    String definitions = dictionaryEntry.definitions;
+    Map<String, dynamic> jsonMap = jsonDecode(definitions);
     showDialog(
       context: context,
       builder: (context) {
-        return DefinitionsDialog(
-          wordOrPhrase: wordOrPhrase,
-          db: db,
-          dictionaryId: dictionaryId,
+        return AlertDialog(
+          title: Text(wordOrPhrase),
+          content: SizedBox(
+            width: MediaQuery.of(context).size.width * 0.5,
+            height: MediaQuery.of(context).size.height * 0.4,
+            child: SingleChildScrollView(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: jsonMap.keys.map((key) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        key,
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      ...List<Widget>.generate(
+                        jsonMap[key].length,
+                        (index) => Text('${index + 1}. ${jsonMap[key][index]}'),
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Close'),
+            ),
+          ],
         );
       },
     );

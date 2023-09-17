@@ -17,7 +17,6 @@ class WordCollection extends StatefulWidget {
   final int numColumns = 6;
   final int numWordsPerPage = 192;
   final Map<int, Widget> pages = {};
-  final String dictionaryId;
 
   WordCollection({
     super.key,
@@ -27,7 +26,6 @@ class WordCollection extends StatefulWidget {
     required this.favorites,
     required this.onViewFavorites,
     required this.onViewAll,
-    required this.dictionaryId,
   });
 
   @override
@@ -161,7 +159,6 @@ class _WordCollectionState extends State<WordCollection> {
       endIndex: endIndex,
       numTotalEntries: widget.numWordsPerPage,
       favorites: widget.favorites,
-      dictionaryId: widget.dictionaryId,
     );
     widget.pages[index] = page;
     return page;

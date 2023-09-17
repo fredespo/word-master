@@ -9,23 +9,14 @@ part of 'dictionary_entry.dart';
 class DictionaryEntry extends _DictionaryEntry
     with RealmEntity, RealmObjectBase, RealmObject {
   DictionaryEntry(
-    String dictionaryId,
     String wordOrPhrase,
     String definitions,
   ) {
-    RealmObjectBase.set(this, 'dictionaryId', dictionaryId);
     RealmObjectBase.set(this, 'wordOrPhrase', wordOrPhrase);
     RealmObjectBase.set(this, 'definitions', definitions);
   }
 
   DictionaryEntry._();
-
-  @override
-  String get dictionaryId =>
-      RealmObjectBase.get<String>(this, 'dictionaryId') as String;
-  @override
-  set dictionaryId(String value) =>
-      RealmObjectBase.set(this, 'dictionaryId', value);
 
   @override
   String get wordOrPhrase =>
@@ -55,8 +46,8 @@ class DictionaryEntry extends _DictionaryEntry
     RealmObjectBase.registerFactory(DictionaryEntry._);
     return const SchemaObject(
         ObjectType.realmObject, DictionaryEntry, 'DictionaryEntry', [
-      SchemaProperty('dictionaryId', RealmPropertyType.string),
-      SchemaProperty('wordOrPhrase', RealmPropertyType.string),
+      SchemaProperty('wordOrPhrase', RealmPropertyType.string,
+          primaryKey: true),
       SchemaProperty('definitions', RealmPropertyType.string),
     ]);
   }

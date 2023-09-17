@@ -3,18 +3,17 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:realm/realm.dart';
 import 'package:http/http.dart' as http;
-import 'package:word_master/dictionary.dart';
 
 import 'dictionary_entry.dart';
 
 class DictionaryDataImporter extends StatefulWidget {
   final Realm db;
-  final String dictionaryId;
+  final Function(num) onImportComplete;
 
   const DictionaryDataImporter({
     super.key,
     required this.db,
-    required this.dictionaryId,
+    required this.onImportComplete,
   });
 
   @override
@@ -77,7 +76,6 @@ class _DictionaryDataImporterState extends State<DictionaryDataImporter> {
     String? startKey;
     num totalCount = 0;
     num expectedTotal = total ?? 350000;
-    var dict = widget.db.find<Dictionary>(widget.dictionaryId);
     do {
       Map<String, dynamic> args = {
         'limit': numPerCall,
@@ -99,14 +97,9 @@ class _DictionaryDataImporterState extends State<DictionaryDataImporter> {
           var wordOrPhrase = entry.key;
           var definitions = entry.value;
           widget.db.add(
-            DictionaryEntry(
-              widget.dictionaryId,
-              wordOrPhrase,
-              json.encode(definitions),
-            ),
+            DictionaryEntry(wordOrPhrase, json.encode(definitions)),
             update: true,
           );
-          dict!.size++;
         }
       });
       totalCount += entries.length;
@@ -114,6 +107,7 @@ class _DictionaryDataImporterState extends State<DictionaryDataImporter> {
         progressCallback(totalCount / expectedTotal);
       }
     } while (startKey != null && (total == null || totalCount < total));
+    widget.onImportComplete(totalCount);
   }
 
   Widget _buildProgressIndicator() {

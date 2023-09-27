@@ -3,17 +3,18 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:realm/realm.dart';
 import 'package:http/http.dart' as http;
+import 'package:word_master/dictionary.dart';
 
 import 'dictionary_entry.dart';
 
 class DictionaryDataImporter extends StatefulWidget {
   final Realm db;
-  final Function(num) onImportComplete;
+  final String dictionaryId;
 
   const DictionaryDataImporter({
     super.key,
     required this.db,
-    required this.onImportComplete,
+    required this.dictionaryId,
   });
 
   @override
@@ -21,7 +22,6 @@ class DictionaryDataImporter extends StatefulWidget {
 }
 
 class _DictionaryDataImporterState extends State<DictionaryDataImporter> {
-  bool enabled = true;
   double progress = 0;
   bool inProgress = false;
 
@@ -37,13 +37,15 @@ class _DictionaryDataImporterState extends State<DictionaryDataImporter> {
 
   Widget _buildImportButton() {
     return ElevatedButton(
-      onPressed: enabled
-          ? () async {
+      onPressed: inProgress
+          ? null
+          : () async {
               setState(() {
-                enabled = false;
                 inProgress = true;
+                progress = 0;
               });
 
+              await Future.delayed(const Duration(seconds: 1));
               await _importDictionaryEntries(
                 progressCallback: (progress) {
                   setState(() {
@@ -53,12 +55,10 @@ class _DictionaryDataImporterState extends State<DictionaryDataImporter> {
               );
 
               setState(() {
-                enabled = true;
                 inProgress = false;
               });
-            }
-          : null,
-      child: const Text('Import'),
+            },
+      child: Text(inProgress ? 'Importing...' : 'Import'),
     );
   }
 
@@ -76,6 +76,12 @@ class _DictionaryDataImporterState extends State<DictionaryDataImporter> {
     String? startKey;
     num totalCount = 0;
     num expectedTotal = total ?? 350000;
+    var dict = widget.db.find<Dictionary>(widget.dictionaryId);
+    if (dict == null) {
+      return;
+    }
+
+    await clearDictionaryEntries(dict);
     do {
       Map<String, dynamic> args = {
         'limit': numPerCall,
@@ -97,9 +103,13 @@ class _DictionaryDataImporterState extends State<DictionaryDataImporter> {
           var wordOrPhrase = entry.key;
           var definitions = entry.value;
           widget.db.add(
-            DictionaryEntry(wordOrPhrase, json.encode(definitions)),
-            update: true,
+            DictionaryEntry(
+              widget.dictionaryId,
+              wordOrPhrase,
+              json.encode(definitions),
+            ),
           );
+          dict.size++;
         }
       });
       totalCount += entries.length;
@@ -107,7 +117,27 @@ class _DictionaryDataImporterState extends State<DictionaryDataImporter> {
         progressCallback(totalCount / expectedTotal);
       }
     } while (startKey != null && (total == null || totalCount < total));
-    widget.onImportComplete(totalCount);
+  }
+
+  Future clearDictionaryEntries(Dictionary dictionary) async {
+    const batchSize = 100;
+    var preexistingEntries = widget.db
+        .all<DictionaryEntry>()
+        .query("dictionaryId == '${dictionary.id}'")
+        .toList();
+
+    for (int i = 0; i < preexistingEntries.length; i += batchSize) {
+      widget.db.write(() {
+        for (int j = i;
+            j < i + batchSize && j < preexistingEntries.length;
+            j++) {
+          widget.db.delete(preexistingEntries[j]);
+        }
+      });
+      await Future.delayed(const Duration(microseconds: 1));
+    }
+
+    widget.db.write(() => dictionary.size = 0);
   }
 
   Widget _buildProgressIndicator() {

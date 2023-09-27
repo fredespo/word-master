@@ -10,12 +10,14 @@ class WordCollectionData extends _WordCollectionData
     with RealmEntity, RealmObjectBase, RealmObject {
   WordCollectionData(
     String name,
-    DateTime createdOn, {
+    DateTime createdOn,
+    String dictionaryId, {
     Iterable<String> words = const [],
     Set<String> favorites = const {},
   }) {
     RealmObjectBase.set(this, 'name', name);
     RealmObjectBase.set(this, 'createdOn', createdOn);
+    RealmObjectBase.set(this, 'dictionaryId', dictionaryId);
     RealmObjectBase.set<RealmList<String>>(
         this, 'words', RealmList<String>(words));
     RealmObjectBase.set<RealmSet<String>>(
@@ -35,6 +37,13 @@ class WordCollectionData extends _WordCollectionData
   @override
   set createdOn(DateTime value) =>
       RealmObjectBase.set(this, 'createdOn', value);
+
+  @override
+  String get dictionaryId =>
+      RealmObjectBase.get<String>(this, 'dictionaryId') as String;
+  @override
+  set dictionaryId(String value) =>
+      RealmObjectBase.set(this, 'dictionaryId', value);
 
   @override
   RealmList<String> get words =>
@@ -66,6 +75,7 @@ class WordCollectionData extends _WordCollectionData
         ObjectType.realmObject, WordCollectionData, 'WordCollectionData', [
       SchemaProperty('name', RealmPropertyType.string),
       SchemaProperty('createdOn', RealmPropertyType.timestamp),
+      SchemaProperty('dictionaryId', RealmPropertyType.string),
       SchemaProperty('words', RealmPropertyType.string,
           collectionType: RealmCollectionType.list),
       SchemaProperty('favorites', RealmPropertyType.string,

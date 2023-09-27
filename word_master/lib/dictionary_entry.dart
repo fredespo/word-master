@@ -4,7 +4,7 @@ part 'dictionary_entry.g.dart';
 
 @RealmModel()
 class _DictionaryEntry {
-  @PrimaryKey()
+  late String dictionaryId;
   late String wordOrPhrase;
   late String definitions;
 }

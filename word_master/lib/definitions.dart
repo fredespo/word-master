@@ -42,15 +42,22 @@ class Definitions extends StatelessWidget {
     String definitions = dictionaryEntry.definitions;
     Map<String, dynamic> jsonMap = jsonDecode(definitions);
     return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: jsonMap.keys.map((key) {
+      child: Column(children: [
+        Text(
+          wordOrPhrase ?? dictionaryEntry.wordOrPhrase,
+          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 20),
+        ),
+        const SizedBox(height: 10),
+        ...jsonMap.keys.map((key) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                key,
-                style: const TextStyle(fontWeight: FontWeight.bold),
+              SizedBox(
+                width: double.infinity,
+                child: Text(
+                  key,
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
               ),
               ...List<Widget>.generate(
                 jsonMap[key].length,
@@ -59,7 +66,7 @@ class Definitions extends StatelessWidget {
             ],
           );
         }).toList(),
-      ),
+      ]),
     );
   }
 }

@@ -4,8 +4,9 @@ import 'package:word_master/definitions.dart';
 
 import 'dictionary_entry.dart';
 import 'dictionary_entry_creation_dialog.dart';
+import 'package:selectable/selectable.dart';
 
-class DefinitionsDialog extends StatelessWidget {
+class DefinitionsDialog extends StatefulWidget {
   final DictionaryEntry? entry;
   final String? wordOrPhrase;
   final String? dictionaryId;
@@ -26,17 +27,49 @@ class DefinitionsDialog extends StatelessWidget {
         );
 
   @override
+  State<DefinitionsDialog> createState() => _DefinitionsDialogState();
+}
+
+class _DefinitionsDialogState extends State<DefinitionsDialog> {
+  List<Widget> defs = [];
+
+  @override
+  void initState() {
+    super.initState();
+    defs.add(
+      Definitions(
+        wordOrPhrase: widget.wordOrPhrase,
+        dictionaryId: widget.dictionaryId,
+        entry: widget.entry,
+        db: widget.db,
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(wordOrPhrase ?? entry!.wordOrPhrase),
       content: SizedBox(
         width: MediaQuery.of(context).size.width * 0.5,
         height: MediaQuery.of(context).size.height * 0.4,
-        child: Definitions(
-          wordOrPhrase: wordOrPhrase,
-          dictionaryId: dictionaryId,
-          entry: entry,
-          db: db,
+        child: SingleChildScrollView(
+          child: Selectable(
+            popupMenuItems: [
+              SelectableMenuItem(type: SelectableMenuItemType.copy),
+              SelectableMenuItem(
+                title: 'Define',
+                isEnabled: (controller) =>
+                    controller!.isTextSelected &&
+                    getEntry(controller.getSelection()!.text!) != null,
+                handler: (controller) {
+                  addDefinition(getEntry(controller!.getSelection()!.text!)!);
+                  controller.deselectAll();
+                  return true;
+                },
+              ),
+            ],
+            child: Column(children: defs),
+          ),
         ),
       ),
       actions: [
@@ -46,7 +79,7 @@ class DefinitionsDialog extends StatelessWidget {
           },
           child: const Text('Close'),
         ),
-        if (canEdit)
+        if (widget.canEdit)
           ElevatedButton(
               onPressed: () {
                 Navigator.pop(context);
@@ -54,14 +87,60 @@ class DefinitionsDialog extends StatelessWidget {
                     context: context,
                     builder: (context) {
                       return DictionaryEntryCreationDialog(
-                        db: db!,
-                        dictionaryId: dictionaryId!,
-                        entryToEdit: entry,
+                        db: widget.db!,
+                        dictionaryId: widget.dictionaryId!,
+                        entryToEdit: widget.entry,
                       );
                     });
               },
               child: const Text('Edit'))
       ],
     );
+  }
+
+  DictionaryEntry? getEntry(String wordOrPhrase) {
+    var entryFromThisDict = getEntryFromThisDictionary(wordOrPhrase);
+    if (entryFromThisDict != null) {
+      return entryFromThisDict;
+    }
+    var entryFromOtherDict = getEntryFromOtherDictionary(wordOrPhrase);
+    return entryFromOtherDict;
+  }
+
+  DictionaryEntry? getEntryFromThisDictionary(String wordOrPhrase) {
+    try {
+      return widget.db!
+          .all<DictionaryEntry>()
+          .query("dictionaryId == '${widget.dictionaryId}'")
+          .query("wordOrPhrase == \$0", [wordOrPhrase]).first;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  DictionaryEntry? getEntryFromOtherDictionary(String wordOrPhrase) {
+    try {
+      return widget.db!
+          .all<DictionaryEntry>()
+          .query("wordOrPhrase == \$0", [wordOrPhrase]).first;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  void addDefinition(DictionaryEntry entry) {
+    setState(() {
+      defs.add(
+        const Divider(thickness: 3),
+      );
+      defs.add(
+        Definitions(
+          wordOrPhrase: entry.wordOrPhrase,
+          dictionaryId: widget.dictionaryId,
+          entry: entry,
+          db: widget.db,
+        ),
+      );
+    });
   }
 }

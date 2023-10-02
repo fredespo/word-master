@@ -42,31 +42,34 @@ class Definitions extends StatelessWidget {
     String definitions = dictionaryEntry.definitions;
     Map<String, dynamic> jsonMap = jsonDecode(definitions);
     return SingleChildScrollView(
-      child: Column(children: [
-        Text(
-          wordOrPhrase ?? dictionaryEntry.wordOrPhrase,
-          style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 20),
-        ),
-        const SizedBox(height: 10),
-        ...jsonMap.keys.map((key) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SizedBox(
-                width: double.infinity,
-                child: Text(
-                  key,
-                  style: const TextStyle(fontWeight: FontWeight.bold),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(25, 0, 20, 30),
+        child: Column(children: [
+          Text(
+            wordOrPhrase ?? dictionaryEntry.wordOrPhrase,
+            style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 20),
+          ),
+          const SizedBox(height: 10),
+          ...jsonMap.keys.map((key) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  child: Text(
+                    key,
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
                 ),
-              ),
-              ...List<Widget>.generate(
-                jsonMap[key].length,
-                (index) => Text('${index + 1}. ${jsonMap[key][index]}'),
-              ),
-            ],
-          );
-        }).toList(),
-      ]),
+                ...List<Widget>.generate(
+                  jsonMap[key].length,
+                  (index) => Text('${index + 1}. ${jsonMap[key][index]}'),
+                ),
+              ],
+            );
+          }).toList(),
+        ]),
+      ),
     );
   }
 }

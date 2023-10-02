@@ -50,8 +50,8 @@ class _DefinitionsDialogState extends State<DefinitionsDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       content: SizedBox(
-        width: MediaQuery.of(context).size.width * 0.5,
-        height: MediaQuery.of(context).size.height * 0.4,
+        width: MediaQuery.of(context).size.width * 0.6,
+        height: MediaQuery.of(context).size.height * 0.5,
         child: SingleChildScrollView(
           child: Selectable(
             popupMenuItems: [
@@ -112,7 +112,7 @@ class _DefinitionsDialogState extends State<DefinitionsDialog> {
       return widget.db!
           .all<DictionaryEntry>()
           .query("dictionaryId == '${widget.dictionaryId}'")
-          .query("wordOrPhrase == \$0", [wordOrPhrase]).first;
+          .query("wordOrPhrase == \$0", [wordOrPhrase.toLowerCase()]).first;
     } catch (e) {
       return null;
     }
@@ -122,7 +122,7 @@ class _DefinitionsDialogState extends State<DefinitionsDialog> {
     try {
       return widget.db!
           .all<DictionaryEntry>()
-          .query("wordOrPhrase == \$0", [wordOrPhrase]).first;
+          .query("wordOrPhrase == \$0", [wordOrPhrase.toLowerCase()]).first;
     } catch (e) {
       return null;
     }

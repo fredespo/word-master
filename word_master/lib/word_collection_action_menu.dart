@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 
 class WordCollectionActionMenu extends StatelessWidget {
+  final Function() onAddEntries;
+  static const actionValueAddEntries = 1;
   final Function() onViewFaves;
-  static const actionValueViewFaves = 1;
+  static const actionValueViewFaves = 2;
   final Function() onViewAll;
-  static const actionValueViewAll = 2;
+  static const actionValueViewAll = 3;
 
   const WordCollectionActionMenu({
     super.key,
     required this.onViewFaves,
     required this.onViewAll,
+    required this.onAddEntries,
   });
 
   @override
@@ -17,6 +20,10 @@ class WordCollectionActionMenu extends StatelessWidget {
     return PopupMenuButton(
       itemBuilder: (BuildContext context) {
         return [
+          const PopupMenuItem(
+            value: actionValueAddEntries,
+            child: Text('Add entries'),
+          ),
           const PopupMenuItem(
             value: actionValueViewFaves,
             child: Text('View only favorites'),
@@ -33,6 +40,10 @@ class WordCollectionActionMenu extends StatelessWidget {
 
   void _handleMenuSelection(int value) {
     switch (value) {
+      case actionValueAddEntries:
+        onAddEntries();
+        break;
+
       case actionValueViewFaves:
         onViewFaves();
         break;

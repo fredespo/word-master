@@ -1,19 +1,19 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:realm/realm.dart';
+import 'package:word_master/random_words_selector.dart';
 
 import 'dictionary.dart';
 
 class WordCollectionCreator extends StatefulWidget {
-  final Function(String, Dictionary, int) onCreate;
+  final Function(String, Map<String, int>) onCreate;
   final RealmResults<Dictionary> dictionaries;
+  final Realm db;
 
   const WordCollectionCreator({
     super.key,
     required this.onCreate,
     required this.dictionaries,
+    required this.db,
   });
 
   @override
@@ -22,18 +22,7 @@ class WordCollectionCreator extends StatefulWidget {
 
 class _WordCollectionCreatorState extends State<WordCollectionCreator> {
   String name = '';
-  int numberOfWords = 1;
-  int maxNumberOfWords = 1;
-  Dictionary? selectedDictionary;
-  late TextEditingController _textEditingController;
-  final NumberFormat _numberFormat = NumberFormat('#,##0');
-
-  @override
-  void initState() {
-    super.initState();
-    _textEditingController = TextEditingController();
-    _textEditingController.text = _numberFormat.format(0);
-  }
+  Map<String, int> numEntriesPerDictionaryId = {};
 
   @override
   Widget build(BuildContext context) {
@@ -52,7 +41,8 @@ class _WordCollectionCreatorState extends State<WordCollectionCreator> {
             ],
           )
         : AlertDialog(
-            title: const Text('Create a new collection'),
+            title: const Text('Create a new collection',
+                textAlign: TextAlign.center),
             content: IntrinsicHeight(
               child: Column(children: [
                 TextField(
@@ -67,25 +57,18 @@ class _WordCollectionCreatorState extends State<WordCollectionCreator> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                const Text(
-                  'Dictionary',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                _buildDictionariesSelection(),
-                const SizedBox(height: 20),
-                const Text(
-                  'Number of words',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                IgnorePointer(
-                  ignoring: selectedDictionary == null,
-                  child: _buildSlider(),
+                RandomWordsSelector(
+                  dictionaries: widget.dictionaries,
+                  db: widget.db,
+                  onNumEntriesChanged: (Dictionary dict, int numEntries) {
+                    setState(() {
+                      if (numEntries == 0) {
+                        numEntriesPerDictionaryId.remove(dict.id);
+                        return;
+                      }
+                      numEntriesPerDictionaryId[dict.id] = numEntries;
+                    });
+                  },
                 ),
               ]),
             ),
@@ -97,87 +80,15 @@ class _WordCollectionCreatorState extends State<WordCollectionCreator> {
                 child: const Text('Cancel'),
               ),
               ElevatedButton(
-                onPressed: selectedDictionary != null
+                onPressed: numEntriesPerDictionaryId.isNotEmpty
                     ? () {
                         Navigator.of(context).pop();
-                        widget.onCreate(
-                            name, selectedDictionary!, numberOfWords);
+                        widget.onCreate(name, numEntriesPerDictionaryId);
                       }
                     : null,
                 child: const Text('Create'),
               ),
             ],
           );
-  }
-
-  Widget _buildDictionariesSelection() {
-    // list of radio buttons
-    return Column(
-      children: widget.dictionaries.map((dictionary) {
-        return RadioListTile<Dictionary>(
-          title: Text(dictionary.name),
-          value: dictionary,
-          groupValue: selectedDictionary,
-          onChanged: (Dictionary? value) {
-            setState(() {
-              selectedDictionary = value;
-              maxNumberOfWords = selectedDictionary?.size ?? 1;
-              numberOfWords = min(numberOfWords, maxNumberOfWords);
-              _textEditingController.text = _numberFormat
-                  .format(selectedDictionary == null ? 0 : numberOfWords);
-            });
-          },
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildSlider() {
-    return Row(
-      children: [
-        Slider(
-          value: numberOfWords.toDouble(),
-          min: 1,
-          max: maxNumberOfWords.toDouble(),
-          onChanged: (newValue) {
-            setState(() {
-              numberOfWords = newValue.toInt();
-              _textEditingController.text = _numberFormat.format(newValue);
-            });
-          },
-        ),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            SizedBox(
-              width: 60,
-              child: TextField(
-                controller: _textEditingController,
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.center,
-                decoration: const InputDecoration(
-                  border: InputBorder.none, // Remove underline
-                ),
-                onChanged: (newValue) {
-                  setState(() {
-                    int? val = int.tryParse(newValue);
-                    if (val == null || val < 1 || val > maxNumberOfWords) {
-                      if (val != null) {
-                        val = min(val, maxNumberOfWords);
-                        val = max(val, 1);
-                      } else {
-                        val = 1;
-                      }
-                      _textEditingController.text = _numberFormat.format(val);
-                    }
-                    numberOfWords = val;
-                  });
-                },
-              ),
-            ),
-          ],
-        ),
-      ],
-    );
   }
 }

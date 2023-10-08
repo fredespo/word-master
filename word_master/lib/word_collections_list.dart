@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:realm/realm.dart';
 import 'package:word_master/word_collection_card.dart';
-import 'package:word_master/word_collection_data.dart';
+import 'package:word_master/word_collection.dart';
 
 class WordCollectionsList extends StatelessWidget {
-  final RealmResults<WordCollectionData> wordCollections;
-  final Function(BuildContext, WordCollectionData) onTap;
-  final Function(WordCollectionData) onDismissed;
+  final RealmResults<WordCollection> wordCollections;
+  final Function(BuildContext, WordCollection) onTap;
+  final Function(WordCollection) onDismissed;
 
   const WordCollectionsList({
     super.key,
@@ -37,7 +37,7 @@ class WordCollectionsList extends StatelessWidget {
                 onTap: (evaluation) {
                   onTap(context, evaluation);
                 },
-                onDismissed: (WordCollectionData wordCollection) {
+                onDismissed: (WordCollection wordCollection) {
                   onDismissed(wordCollection);
                 },
               ),

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:word_master/word_collection_data.dart';
+import 'package:word_master/word_collection.dart';
 
 class WordCollectionCard extends StatelessWidget {
-  final WordCollectionData wordCollection;
-  final Function(WordCollectionData) onTap;
-  final Function(WordCollectionData) onDismissed;
+  final WordCollection wordCollection;
+  final Function(WordCollection) onTap;
+  final Function(WordCollection) onDismissed;
   final double widthFactor;
   final NumberFormat _numberFormat = NumberFormat('#,##0');
 
@@ -72,8 +72,8 @@ class WordCollectionCard extends StatelessWidget {
     widgets.add(Text(
         "Created on ${createdOn.month}/${createdOn.day}/${createdOn.year}"));
     widgets.add(const SizedBox(height: 8));
-    widgets.add(Text(
-        "with ${_numberFormat.format(wordCollection.words.length)} entries"));
+    widgets
+        .add(Text("with ${_numberFormat.format(wordCollection.size)} entries"));
     return widgets;
   }
 }

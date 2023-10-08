@@ -1,22 +1,27 @@
+import 'dart:async';
+
 import 'package:auto_size_text/auto_size_text.dart';
 import 'package:flutter/material.dart';
+import 'package:realm/realm.dart';
+import 'package:word_master/word_collection_entry.dart';
 
 class WordCollectionPageCell extends StatefulWidget {
-  final String wordOrPhrase;
+  final WordCollectionEntry? entry;
   final Color bgColor;
-  final bool isFavorite;
-  final Function(String) showDefinitions;
+  final Function(WordCollectionEntry) showDefinitions;
   final Function(String) onMarkedFavorite;
   final Function(String) onUnmarkedFavorite;
+  final Realm db;
+  final controller = StreamController<RealmObject>();
 
-  const WordCollectionPageCell({
+  WordCollectionPageCell({
     super.key,
-    required this.wordOrPhrase,
     required this.bgColor,
-    required this.isFavorite,
     required this.showDefinitions,
     required this.onMarkedFavorite,
     required this.onUnmarkedFavorite,
+    required this.entry,
+    required this.db,
   });
 
   @override
@@ -24,16 +29,24 @@ class WordCollectionPageCell extends StatefulWidget {
 }
 
 class _WordCollectionPageCellState extends State<WordCollectionPageCell> {
-  late bool isFavorite;
-
   @override
   void initState() {
-    isFavorite = widget.isFavorite;
     super.initState();
+    if (widget.entry != null) {
+      widget.controller.add(widget.entry!);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    return widget.entry != null
+        ? StreamBuilder<RealmObject>(
+            stream: widget.controller.stream,
+            builder: (context, snapshot) => getMainBody())
+        : getMainBody();
+  }
+
+  Widget getMainBody() {
     return Container(
       decoration: BoxDecoration(
         color: widget.bgColor,
@@ -41,14 +54,16 @@ class _WordCollectionPageCellState extends State<WordCollectionPageCell> {
       child: SizedBox(
         height: 50,
         child: InkWell(
-          onLongPress: () => _toggleIsFavorite(),
-          onTap: () => widget.showDefinitions(widget.wordOrPhrase),
+          onLongPress: widget.entry != null ? () => _toggleIsFavorite() : null,
+          onTap: widget.entry != null
+              ? () => widget.showDefinitions(widget.entry!)
+              : null,
           child: Padding(
             padding: const EdgeInsets.all(4.0),
             child: Stack(
               children: [
                 Center(child: _buildText()),
-                if (isFavorite) _buildHighlight(),
+                if (widget.entry?.isFavorite == true) _buildHighlight(),
               ],
             ),
           ),
@@ -58,10 +73,11 @@ class _WordCollectionPageCellState extends State<WordCollectionPageCell> {
   }
 
   Widget _buildText() {
-    final fontWeight = isFavorite ? FontWeight.bold : FontWeight.normal;
+    final fontWeight =
+        widget.entry?.isFavorite == true ? FontWeight.bold : FontWeight.normal;
     return AutoSizeText(
       textAlign: TextAlign.center,
-      widget.wordOrPhrase,
+      widget.entry?.wordOrPhrase ?? '',
       maxLines: 2,
       minFontSize: 8,
       maxFontSize: 12,
@@ -93,12 +109,9 @@ class _WordCollectionPageCellState extends State<WordCollectionPageCell> {
 
   void _toggleIsFavorite() {
     setState(() {
-      isFavorite = !isFavorite;
-      if (isFavorite) {
-        widget.onMarkedFavorite(widget.wordOrPhrase);
-      } else {
-        widget.onUnmarkedFavorite(widget.wordOrPhrase);
-      }
+      widget.db.write(() {
+        widget.entry!.isFavorite = !widget.entry!.isFavorite;
+      });
     });
   }
 }

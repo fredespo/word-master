@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:realm/realm.dart';
 import 'package:word_master/dictionary_entry.dart';
+import 'package:word_master/word_collection_entry.dart';
 
 import 'dictionary.dart';
 import 'dictionary_definition_creator.dart';
@@ -27,6 +28,7 @@ class DictionaryEntryCreationDialog extends StatefulWidget {
 class _DictionaryEntryCreationDialogState
     extends State<DictionaryEntryCreationDialog> {
   String wordOrPhrase = '';
+  bool changedWord = false;
   Map<String, List<String>> definitions = {};
   int page = 1;
 
@@ -97,6 +99,7 @@ class _DictionaryEntryCreationDialogState
       onChanged: (value) {
         setState(() {
           wordOrPhrase = value.trim();
+          changedWord = true;
         });
       },
     );
@@ -171,6 +174,7 @@ class _DictionaryEntryCreationDialogState
   }
 
   void _save() {
+    var originalWordOrPhrase = widget.entryToEdit?.wordOrPhrase;
     widget.db.write(
       () {
         if (widget.entryToEdit != null) {
@@ -184,6 +188,18 @@ class _DictionaryEntryCreationDialogState
         }
       },
     );
+
+    if (changedWord && originalWordOrPhrase != null) {
+      var entries = widget.db.all<WordCollectionEntry>().query(
+          "wordOrPhrase == \$0 AND dictionaryId == '${widget.dictionaryId}'",
+          [originalWordOrPhrase]);
+      widget.db.write(() {
+        for (var entry in entries) {
+          entry.wordOrPhrase = wordOrPhrase;
+        }
+      });
+    }
+
     Navigator.of(context).pop();
   }
 

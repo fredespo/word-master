@@ -60,9 +60,16 @@ class _DefinitionsDialogState extends State<DefinitionsDialog> {
                 title: 'Define',
                 isEnabled: (controller) =>
                     controller!.isTextSelected &&
-                    getEntry(controller.getSelection()!.text!) != null,
+                    getFirstEntry([
+                          controller.getSelection()!.text!,
+                          controller.getSelection()!.text!.toLowerCase(),
+                        ]) !=
+                        null,
                 handler: (controller) {
-                  addDefinition(getEntry(controller!.getSelection()!.text!)!);
+                  addDefinition(getFirstEntry([
+                    controller!.getSelection()!.text!,
+                    controller!.getSelection()!.text!.toLowerCase(),
+                  ])!);
                   controller.deselectAll();
                   return true;
                 },
@@ -98,6 +105,16 @@ class _DefinitionsDialogState extends State<DefinitionsDialog> {
     );
   }
 
+  DictionaryEntry? getFirstEntry(List<String> words) {
+    for (var word in words) {
+      var entry = getEntry(word);
+      if (entry != null) {
+        return entry;
+      }
+    }
+    return null;
+  }
+
   DictionaryEntry? getEntry(String wordOrPhrase) {
     var entryFromThisDict = getEntryFromThisDictionary(wordOrPhrase);
     if (entryFromThisDict != null) {
@@ -112,7 +129,7 @@ class _DefinitionsDialogState extends State<DefinitionsDialog> {
       return widget.db!
           .all<DictionaryEntry>()
           .query("dictionaryId == '${widget.dictionaryId}'")
-          .query("wordOrPhrase == \$0", [wordOrPhrase.toLowerCase()]).first;
+          .query("wordOrPhrase == \$0", [wordOrPhrase]).first;
     } catch (e) {
       return null;
     }
@@ -122,7 +139,7 @@ class _DefinitionsDialogState extends State<DefinitionsDialog> {
     try {
       return widget.db!
           .all<DictionaryEntry>()
-          .query("wordOrPhrase == \$0", [wordOrPhrase.toLowerCase()]).first;
+          .query("wordOrPhrase == \$0", [wordOrPhrase]).first;
     } catch (e) {
       return null;
     }

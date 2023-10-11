@@ -1,22 +1,22 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:word_master/word_collection.dart';
+import 'package:word_master/word_collection_data.dart';
 
-class WordCollectionCard extends StatelessWidget {
-  final WordCollection wordCollection;
-  final Function(WordCollection) onTap;
-  final Function(WordCollection) onDismissed;
+class OldWordCollectionCard extends StatelessWidget {
+  final WordCollectionData oldWordCollection;
+  final Function(WordCollectionData) onTap;
+  final Function(WordCollectionData) onDismissed;
   final double widthFactor;
   final NumberFormat _numberFormat = NumberFormat('#,##0');
   final Future<bool?> Function(DismissDirection, BuildContext, String)
       confirmDismiss;
 
-  WordCollectionCard({
+  OldWordCollectionCard({
     super.key,
-    required this.wordCollection,
     required this.onTap,
     this.widthFactor = 1.0,
     required this.onDismissed,
+    required this.oldWordCollection,
     required this.confirmDismiss,
   });
 
@@ -24,18 +24,18 @@ class WordCollectionCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Center(
       child: Dismissible(
-        key: Key(ObjectKey(wordCollection).toString()),
+        key: Key(ObjectKey(oldWordCollection).toString()),
         direction: DismissDirection.endToStart,
         confirmDismiss: (direction) {
           return confirmDismiss(
               direction,
               context,
-              wordCollection.name.isNotEmpty
-                  ? wordCollection.name
+              oldWordCollection.name.isNotEmpty
+                  ? oldWordCollection.name
                   : "Untitled Word Collection");
         },
         onDismissed: (direction) {
-          onDismissed(wordCollection);
+          onDismissed(oldWordCollection);
         },
         background: Container(
           color: Colors.red,
@@ -63,17 +63,17 @@ class WordCollectionCard extends StatelessWidget {
               ),
             ),
           ),
-          onTap: () => onTap(wordCollection),
+          onTap: () => onTap(oldWordCollection),
         ),
       ),
     );
   }
 
   List<Widget> _buildBody() {
-    final DateTime createdOn = wordCollection.createdOn;
+    final DateTime createdOn = oldWordCollection.createdOn;
     List<Widget> widgets = [];
-    if (wordCollection.name.isNotEmpty) {
-      widgets.add(Text(wordCollection.name,
+    if (oldWordCollection.name.isNotEmpty) {
+      widgets.add(Text(oldWordCollection.name,
           style: const TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
@@ -83,8 +83,8 @@ class WordCollectionCard extends StatelessWidget {
     widgets.add(Text(
         "Created on ${createdOn.month}/${createdOn.day}/${createdOn.year}"));
     widgets.add(const SizedBox(height: 8));
-    widgets
-        .add(Text("with ${_numberFormat.format(wordCollection.size)} entries"));
+    widgets.add(Text(
+        "with ${_numberFormat.format(oldWordCollection.words.length)} entries"));
     return widgets;
   }
 }

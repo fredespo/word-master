@@ -1,18 +1,20 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:realm/realm.dart';
 import 'package:word_master/dictionary.dart';
 import 'package:word_master/dictionary_data_manager.dart';
 import 'package:word_master/imported_dictionary.dart';
-import 'package:word_master/imported_dictionary_source.dart';
 import 'package:word_master/random_word_fetcher.dart';
 import 'package:word_master/word_collection_adder.dart';
 import 'package:word_master/word_collection_creator.dart';
 import 'package:word_master/word_collection_data.dart';
 import 'package:word_master/word_collection_entry.dart';
+import 'package:word_master/word_collection_migration_dialog.dart';
 import 'package:word_master/word_collections_list.dart';
 import 'package:word_master/word_collection_widget.dart';
 import 'package:word_master/word_collection.dart';
 
+import 'data_migration_widget.dart';
 import 'dictionary_entry.dart';
 
 void main() {
@@ -38,74 +40,143 @@ class _MainAppState extends State<MainApp> {
     ],
     schemaVersion: 7,
   ));
+  bool isMigrating = false;
+  String migrationError = '';
 
   @override
   void initState() {
     super.initState();
-    initDictionaries();
-    initWordCollectionEntries();
   }
 
   @override
   Widget build(BuildContext context) {
+    if (migrationError.isNotEmpty) {
+      return _migrationError();
+    }
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
         backgroundColor: Colors.grey.shade200,
         appBar: AppBar(
           title: const Text('Word Master'),
-          actions: <Widget>[
-            Builder(
-              builder: (context) => PopupMenuButton(
-                onSelected: (value) {
-                  if (value == 'dictionary_data') {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => DictionaryDataManager(db: db),
-                      ),
-                    );
-                  }
-                },
-                itemBuilder: (BuildContext context) {
-                  return [
-                    const PopupMenuItem(
-                      value: 'dictionary_data',
-                      child: Text('Dictionaries'),
+          actions: isMigrating
+              ? []
+              : <Widget>[
+                  Builder(
+                    builder: (context) => PopupMenuButton(
+                      onSelected: (value) {
+                        if (value == 'dictionary_data') {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  DictionaryDataManager(db: db),
+                            ),
+                          );
+                        }
+                      },
+                      itemBuilder: (BuildContext context) {
+                        return [
+                          const PopupMenuItem(
+                            value: 'dictionary_data',
+                            child: Text('Dictionaries'),
+                          ),
+                        ];
+                      },
                     ),
-                  ];
+                  ),
+                ],
+        ),
+        body: isMigrating
+            ? DataMigrationWidget(
+                onDone: () {
+                  SchedulerBinding.instance.addPostFrameCallback((_) {
+                    setState(() {
+                      isMigrating = false;
+                    });
+                  });
+                },
+                db: db,
+                onError: (String errorMessage) {
+                  SchedulerBinding.instance.addPostFrameCallback((_) {
+                    setState(() {
+                      isMigrating = false;
+                      migrationError = errorMessage;
+                    });
+                  });
+                },
+              )
+            : WordCollectionsList(
+                wordCollections: db.all<WordCollection>(),
+                onTap: (context, wordCollection) {
+                  _openWordCollection(context, wordCollection);
+                },
+                onDismissed: (WordCollection wordCollection) {
+                  var entries = db
+                      .all<WordCollectionEntry>()
+                      .query("wordCollectionId == '${wordCollection.id}'");
+                  db.write(() {
+                    db.delete(wordCollection);
+                    for (var entry in entries) {
+                      db.delete(entry);
+                    }
+                  });
+                },
+                oldWordCollections: db.all<WordCollectionData>(),
+                onOldDismissed: (WordCollectionData oldWordCollection) {
+                  db.write(() {
+                    db.delete(oldWordCollection);
+                  });
+                },
+                onOldTap: (BuildContext context,
+                    WordCollectionData oldWordCollection) {
+                  showDialog(
+                    barrierDismissible: false,
+                    context: context,
+                    builder: (context) => WordCollectionMigrationDialog(
+                      db: db,
+                      oldWordCollection: oldWordCollection,
+                      onMigrated: (WordCollection wordCollection) {
+                        Navigator.of(context).pop();
+                        SchedulerBinding.instance.addPostFrameCallback((_) {
+                          _openWordCollection(context, wordCollection);
+                        });
+                      },
+                      onError: (String errorMsg) {
+                        Navigator.of(context).pop();
+                        SchedulerBinding.instance.addPostFrameCallback((_) {
+                          showDialog(
+                              barrierDismissible: false,
+                              context: context,
+                              builder: (context) => AlertDialog(
+                                    title: const Text('Migration Error'),
+                                    content: Text(errorMsg),
+                                    actions: [
+                                      TextButton(
+                                          onPressed: () {
+                                            Navigator.of(context).pop();
+                                          },
+                                          child: const Text('OK'))
+                                    ],
+                                  ));
+                        });
+                      },
+                    ),
+                  );
                 },
               ),
-            ),
-          ],
-        ),
-        body: WordCollectionsList(
-          wordCollections: db.all<WordCollection>(),
-          onTap: (context, wordCollection) {
-            _openWordCollection(context, wordCollection);
-          },
-          onDismissed: (WordCollection wordCollection) {
-            var entries = db
-                .all<WordCollectionEntry>()
-                .query("wordCollectionId == '${wordCollection.id}'");
-            db.write(() {
-              db.delete(wordCollection);
-              for (var entry in entries) {
-                db.delete(entry);
-              }
-            });
-          },
-        ),
-        floatingActionButton: Padding(
-          padding: const EdgeInsets.fromLTRB(0, 0, 30, 30),
-          child: Builder(builder: (context) {
-            return CreateWordTableButton(
-                db: db,
-                onNewWordCollection: (wordCollection) {
-                  _openWordCollection(context, wordCollection);
-                });
-          }),
-        ),
+        floatingActionButton: isMigrating
+            ? null
+            : Padding(
+                padding: const EdgeInsets.fromLTRB(0, 0, 30, 30),
+                child: Builder(builder: (context) {
+                  return CreateWordTableButton(
+                      db: db,
+                      onNewWordCollection: (wordCollection) {
+                        _openWordCollection(context, wordCollection);
+                      });
+                }),
+              ),
       ),
     );
   }
@@ -168,56 +239,38 @@ class _MainAppState extends State<MainApp> {
     );
   }
 
-  void initDictionaries() {
-    var dictionaries = db.all<Dictionary>();
-    if (dictionaries.isEmpty) {
-      var dictionaryId = Uuid.v4().toString();
-      db.write(() {
-        var mwDictionary = Dictionary(dictionaryId, 'Merriam Webster');
-        var importedDictionary = ImportedDictionary(
-          dictionaryId,
-          ImportedDictionarySource.merriamWebster,
-        );
-        db.add(mwDictionary);
-        db.add(importedDictionary);
-
-        // Consider any pre-existing dictionary entry as being part of MW
-        // This is for backward compatibility
-        var size = 0;
-        db.all<DictionaryEntry>().forEach((entry) {
-          entry.dictionaryId = dictionaryId;
-          ++size;
-        });
-        mwDictionary.size = size;
-
-        db.all<WordCollectionEntry>().forEach((wordCollectionEntry) {
-          wordCollectionEntry.dictionaryId = dictionaryId;
-        });
-      });
-    }
-  }
-
-  void initWordCollectionEntries() {
-    db.write(() {
-      db.all<WordCollectionData>().forEach((wordCollectionData) {
-        var wordCollection = WordCollection(
-          Uuid.v4().toString(),
-          wordCollectionData.name,
-          DateTime.now(),
-          wordCollectionData.words.length,
-        );
-        db.add(wordCollection);
-        for (var word in wordCollectionData.words) {
-          db.add(WordCollectionEntry(
-            wordCollection.id,
-            wordCollectionData.dictionaryId,
-            word,
-            wordCollectionData.favorites.contains(word),
-          ));
-        }
-        db.delete(wordCollectionData);
-      });
-    });
+  Widget _migrationError() {
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
+      home: Scaffold(
+        backgroundColor: Colors.grey.shade200,
+        appBar: AppBar(
+          title: const Text('Word Master'),
+        ),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text("Migration Error:", style: TextStyle(fontSize: 20)),
+              Padding(
+                padding: const EdgeInsets.all(20),
+                child: Text(migrationError),
+              ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  setState(() {
+                    isMigrating = false;
+                    migrationError = '';
+                  });
+                },
+                child: const Text('Continue'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 

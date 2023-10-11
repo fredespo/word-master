@@ -68,7 +68,7 @@ class _DefinitionsDialogState extends State<DefinitionsDialog> {
                 handler: (controller) {
                   addDefinition(getFirstEntry([
                     controller!.getSelection()!.text!,
-                    controller!.getSelection()!.text!.toLowerCase(),
+                    controller.getSelection()!.text!.toLowerCase(),
                   ])!);
                   controller.deselectAll();
                   return true;

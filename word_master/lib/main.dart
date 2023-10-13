@@ -3,7 +3,6 @@ import 'package:flutter/scheduler.dart';
 import 'package:realm/realm.dart';
 import 'package:word_master/dictionary.dart';
 import 'package:word_master/dictionary_data_manager.dart';
-import 'package:word_master/imported_dictionary.dart';
 import 'package:word_master/random_word_fetcher.dart';
 import 'package:word_master/word_collection_adder.dart';
 import 'package:word_master/word_collection_creator.dart';
@@ -15,7 +14,7 @@ import 'package:word_master/word_collection_widget.dart';
 import 'package:word_master/word_collection.dart';
 
 import 'data_migration_widget.dart';
-import 'dictionary_entry.dart';
+import 'database.dart';
 
 void main() {
   runApp(const MainApp());
@@ -29,17 +28,7 @@ class MainApp extends StatefulWidget {
 }
 
 class _MainAppState extends State<MainApp> {
-  final Realm db = Realm(Configuration.local(
-    [
-      DictionaryEntry.schema,
-      WordCollectionData.schema,
-      Dictionary.schema,
-      ImportedDictionary.schema,
-      WordCollectionEntry.schema,
-      WordCollection.schema,
-    ],
-    schemaVersion: 7,
-  ));
+  final Realm db = Database.getDbConnection();
   bool isMigrating = false;
   String migrationError = '';
 

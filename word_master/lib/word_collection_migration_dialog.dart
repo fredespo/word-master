@@ -1,8 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:realm/realm.dart';
 import 'package:word_master/word_collection.dart';
 import 'package:word_master/word_collection_data.dart';
-import 'package:word_master/word_collection_entry.dart';
+import 'package:word_master/word_collection_entry_migration.dart';
 
 class WordCollectionMigrationDialog extends StatefulWidget {
   final WordCollectionData oldWordCollection;
@@ -78,57 +79,32 @@ class _WordCollectionMigrationDialogState
   }
 
   void migrate() async {
-    try {
-      var newCollection = WordCollection(
-        Uuid.v4().toString(),
-        widget.oldWordCollection.name,
-        DateTime.now(),
-        widget.oldWordCollection.words.length,
-      );
+    var newCollection = WordCollection(
+      Uuid.v4().toString(),
+      widget.oldWordCollection.name,
+      DateTime.now(),
+      widget.oldWordCollection.words.length,
+    );
 
-      int count = 0;
-      int sinceLastDelay = 0;
-      for (var word in widget.oldWordCollection.words) {
-        var entry = WordCollectionEntry(
-          newCollection.id,
-          widget.oldWordCollection.dictionaryId,
-          word,
-          widget.oldWordCollection.favorites.contains(word),
-        );
-        widget.db.write(() {
-          try {
-            widget.db.add(entry);
-          } catch (e) {
-            widget.onError(e.toString());
-          }
-        });
-        ++count;
-        ++sinceLastDelay;
-        if (sinceLastDelay >= 4) {
-          setState(() {
-            message =
-                'Migrating $count of ${widget.oldWordCollection.words.length} entries';
-          });
-          sinceLastDelay = 0;
-          await Future.delayed(const Duration(microseconds: 10));
-        }
-      }
-      setState(() {
-        message = "Done!";
-      });
+    await compute(
+      WordCollectionEntryMigration.execute,
+      WordCollectionEntryMigration(
+        id: newCollection.id,
+        words: widget.oldWordCollection.words.toList(),
+        favorites: widget.oldWordCollection.favorites.toSet(),
+        dictionaryId: widget.oldWordCollection.dictionaryId,
+      ),
+    );
 
-      widget.db.write(() {
-        try {
-          widget.db.add(newCollection);
-          widget.db.delete(widget.oldWordCollection);
-        } catch (e) {
-          widget.onError(e.toString());
-        }
-      });
+    widget.db.write(() {
+      widget.db.add(newCollection);
+      widget.db.delete(widget.oldWordCollection);
+    });
 
-      widget.onMigrated(newCollection);
-    } catch (e) {
-      widget.onError(e.toString());
-    }
+    setState(() {
+      message = "Done!";
+    });
+
+    widget.onMigrated(newCollection);
   }
 }

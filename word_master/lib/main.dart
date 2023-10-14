@@ -15,6 +15,9 @@ import 'package:word_master/word_collection.dart';
 
 import 'data_migration_widget.dart';
 import 'database.dart';
+import 'dictionary_entry.dart';
+import 'imported_dictionary.dart';
+import 'imported_dictionary_source.dart';
 
 void main() {
   runApp(const MainApp());
@@ -35,6 +38,36 @@ class _MainAppState extends State<MainApp> {
   @override
   void initState() {
     super.initState();
+    initDictionaries();
+  }
+
+  void initDictionaries() {
+    var dictionaries = db.all<Dictionary>();
+    if (dictionaries.isEmpty) {
+      var dictionaryId = Uuid.v4().toString();
+      db.write(() {
+        var mwDictionary = Dictionary(dictionaryId, 'Merriam Webster');
+        var importedDictionary = ImportedDictionary(
+          dictionaryId,
+          ImportedDictionarySource.merriamWebster,
+        );
+        db.add(mwDictionary);
+        db.add(importedDictionary);
+
+        // Consider any pre-existing dictionary entry as being part of MW
+        // This is for backward compatibility
+        var size = 0;
+        db.all<DictionaryEntry>().forEach((entry) {
+          entry.dictionaryId = dictionaryId;
+          ++size;
+        });
+        mwDictionary.size = size;
+
+        db.all<WordCollectionEntry>().forEach((wordCollectionEntry) {
+          wordCollectionEntry.dictionaryId = dictionaryId;
+        });
+      });
+    }
   }
 
   @override

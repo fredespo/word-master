@@ -31,7 +31,8 @@ class _DictionaryDefinitionCreatorState
   @override
   void initState() {
     super.initState();
-    if (widget.existingDefinitions != null) {
+    if (widget.existingDefinitions != null &&
+        widget.existingDefinitions!.isNotEmpty) {
       definitions = widget.existingDefinitions!;
       definitions.forEach((partOfSpeech, defs) {
         definitionWidgets.add(_buildDefinitionInput(partOfSpeech));

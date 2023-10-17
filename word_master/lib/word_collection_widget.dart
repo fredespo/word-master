@@ -12,6 +12,7 @@ class WordCollectionWidget extends StatefulWidget {
   final Realm db;
   final String name;
   final Function() onAddEntries;
+  final Function() onCreateEntry;
   final Color bgColor = const Color.fromARGB(255, 134, 134, 134);
   final int numColumns = 6;
   final int numWordsPerPage = 192;
@@ -27,6 +28,7 @@ class WordCollectionWidget extends StatefulWidget {
     required this.onAddEntries,
     required this.entries,
     required this.sizeNotifier,
+    required this.onCreateEntry,
   });
 
   @override
@@ -55,6 +57,7 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
               });
             },
             onAddEntries: widget.onAddEntries,
+            onCreateEntry: widget.onCreateEntry,
           )
         ],
       ),
@@ -82,7 +85,12 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
     return InteractiveViewer(
       child: Container(
         decoration: BoxDecoration(color: widget.bgColor),
-        child: _buildPageList(),
+        child: ValueListenableBuilder(
+          valueListenable: widget.sizeNotifier,
+          builder: (BuildContext context, pageNum, Widget? child) {
+            return _buildPageList();
+          },
+        ),
       ),
     );
   }

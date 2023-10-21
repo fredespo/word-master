@@ -114,7 +114,7 @@ class _DictionaryDefinitionCreatorSectionState
           widget.onDefinitionsChanged(defs);
         });
       },
-      icon: const Icon(Icons.add),
+      icon: const Icon(Icons.add, color: Colors.black),
     );
   }
 }

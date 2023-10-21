@@ -12,6 +12,9 @@ class WordCollectionsList extends StatelessWidget {
   final Function(BuildContext, WordCollectionData) onOldTap;
   final Function(WordCollection) onDismissed;
   final Function(WordCollectionData) onOldDismissed;
+  final ValueNotifier<bool> inMultiSelectMode;
+  final Function(WordCollection) onSelected;
+  final Function(WordCollection) onDeselected;
 
   const WordCollectionsList({
     super.key,
@@ -21,6 +24,9 @@ class WordCollectionsList extends StatelessWidget {
     required this.oldWordCollections,
     required this.onOldTap,
     required this.onOldDismissed,
+    required this.inMultiSelectMode,
+    required this.onSelected,
+    required this.onDeselected,
   });
 
   @override
@@ -57,6 +63,9 @@ class WordCollectionsList extends StatelessWidget {
                       String name) async {
                     return await confirmDismiss(dir, context, name);
                   },
+                  inMultiSelectMode: inMultiSelectMode,
+                  onSelected: onSelected,
+                  onDeselected: onDeselected,
                 ),
               );
             } else {

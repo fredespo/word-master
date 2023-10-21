@@ -35,6 +35,8 @@ class _MainAppState extends State<MainApp> {
   final Realm db = Database.getDbConnection();
   bool isMigrating = false;
   String migrationError = '';
+  ValueNotifier<bool> inMultiSelectMode = ValueNotifier(false);
+  List<WordCollection> selectedCollections = [];
 
   @override
   void initState() {
@@ -81,13 +83,37 @@ class _MainAppState extends State<MainApp> {
       home: Scaffold(
         backgroundColor: Colors.grey.shade200,
         appBar: AppBar(
-          title: const Text('Word Master'),
+          title: ValueListenableBuilder(
+            valueListenable: inMultiSelectMode,
+            builder:
+                (BuildContext context, inMultiSelectModeValue, Widget? child) {
+              return inMultiSelectModeValue
+                  ? Row(
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(0, 3, 10, 0),
+                          child: IconButton(
+                            onPressed: () {
+                              setState(() {
+                                selectedCollections.clear();
+                                inMultiSelectMode.value = false;
+                              });
+                            },
+                            icon: const Icon(Icons.clear_rounded),
+                          ),
+                        ),
+                        Text("${selectedCollections.length} selected"),
+                      ],
+                    )
+                  : const Text('Word Master');
+            },
+          ),
           actions: isMigrating
               ? []
               : <Widget>[
                   Builder(
                     builder: (context) => PopupMenuButton(
-                      onSelected: (value) {
+                      onSelected: (value) async {
                         if (value == 'dictionary_data') {
                           Navigator.push(
                             context,
@@ -97,14 +123,38 @@ class _MainAppState extends State<MainApp> {
                             ),
                           );
                         }
+
+                        if (value == 'create_entry_in_selected_collections') {
+                          await showDialog(
+                            barrierDismissible: false,
+                            context: context,
+                            builder: (context) {
+                              return WordCollectionEntryCreator(
+                                db: db,
+                                wordCollections: selectedCollections,
+                                onComplete: () => setState(() {
+                                  selectedCollections.clear();
+                                  inMultiSelectMode.value = false;
+                                }),
+                              );
+                            },
+                          );
+                        }
                       },
                       itemBuilder: (BuildContext context) {
-                        return [
-                          const PopupMenuItem(
-                            value: 'dictionary_data',
-                            child: Text('Dictionaries'),
-                          ),
-                        ];
+                        return selectedCollections.isEmpty
+                            ? [
+                                const PopupMenuItem(
+                                  value: 'dictionary_data',
+                                  child: Text('Dictionaries'),
+                                ),
+                              ]
+                            : [
+                                const PopupMenuItem(
+                                  value: 'create_entry_in_selected_collections',
+                                  child: Text('Create Entry'),
+                                ),
+                              ];
                       },
                     ),
                   ),
@@ -187,6 +237,20 @@ class _MainAppState extends State<MainApp> {
                     ),
                   );
                 },
+                inMultiSelectMode: inMultiSelectMode,
+                onSelected: (WordCollection wordCollection) {
+                  setState(() {
+                    selectedCollections.add(wordCollection);
+                  });
+                },
+                onDeselected: (WordCollection wordCollection) {
+                  setState(() {
+                    selectedCollections.remove(wordCollection);
+                    if (selectedCollections.isEmpty) {
+                      inMultiSelectMode.value = false;
+                    }
+                  });
+                },
               ),
         floatingActionButton: isMigrating
             ? null
@@ -262,7 +326,7 @@ class _MainAppState extends State<MainApp> {
                 builder: (context) {
                   return WordCollectionEntryCreator(
                     db: db,
-                    wordCollection: wordCollection,
+                    wordCollections: [wordCollection],
                     wordCollectionSizeNotifier: wordCollectionSizeNotifier,
                   );
                 },

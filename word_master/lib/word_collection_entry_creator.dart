@@ -12,14 +12,16 @@ import 'dictionary_entry.dart';
 
 class WordCollectionEntryCreator extends StatefulWidget {
   final Realm db;
-  final WordCollection wordCollection;
-  final ValueNotifier<int> wordCollectionSizeNotifier;
+  final List<WordCollection> wordCollections;
+  final ValueNotifier<int>? wordCollectionSizeNotifier;
+  final Function()? onComplete;
 
   const WordCollectionEntryCreator({
     super.key,
     required this.db,
-    required this.wordCollection,
-    required this.wordCollectionSizeNotifier,
+    required this.wordCollections,
+    this.wordCollectionSizeNotifier,
+    this.onComplete,
   });
 
   @override
@@ -299,18 +301,25 @@ class _WordCollectionEntryCreatorState
         widget.db.add(entry);
         widget.db.find<Dictionary>(dictionaryId)!.size++;
 
-        // add to current word collection
-        var wordCollectionEntry = WordCollectionEntry(
-          widget.wordCollection.id,
-          dictionaryId,
-          wordOrPhrase!,
-          false,
-        );
-        widget.db.add(wordCollectionEntry);
-        widget.wordCollection.size++;
-        widget.wordCollectionSizeNotifier.value++;
+        // add to word collections
+        widget.wordCollections.forEach((wordCollection) {
+          var wordCollectionEntry = WordCollectionEntry(
+            wordCollection.id,
+            dictionaryId,
+            wordOrPhrase!,
+            false,
+          );
+          widget.db.add(wordCollectionEntry);
+          wordCollection.size++;
+        });
+        if (widget.wordCollectionSizeNotifier != null) {
+          widget.wordCollectionSizeNotifier!.value++;
+        }
       },
     );
+    if (widget.onComplete != null) {
+      widget.onComplete!();
+    }
     Navigator.of(context).pop();
   }
 }

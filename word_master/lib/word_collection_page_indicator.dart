@@ -82,4 +82,10 @@ class _WordCollectionPageIndicatorState
       },
     );
   }
+
+  @override
+  void dispose() {
+    fadeTimer?.cancel();
+    super.dispose();
+  }
 }

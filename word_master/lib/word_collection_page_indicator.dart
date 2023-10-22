@@ -1,15 +1,19 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 class WordCollectionPageIndicator extends StatefulWidget {
   final ScrollController scrollController;
   final ValueNotifier<int> pageNotifier;
+  final ValueNotifier<int> totalPages;
+  final numFormatter = NumberFormat('#,##0');
 
-  const WordCollectionPageIndicator({
+  WordCollectionPageIndicator({
     super.key,
     required this.scrollController,
     required this.pageNotifier,
+    required this.totalPages,
   });
 
   @override
@@ -47,26 +51,31 @@ class _WordCollectionPageIndicatorState
 
   Widget _buildNormalPageIndicator() {
     return ValueListenableBuilder(
-      builder: (BuildContext context, pageNum, Widget? child) {
-        return Container(
-          color: const Color.fromARGB(255, 134, 134, 134).withOpacity(0.8),
-          child: Align(
-            alignment: Alignment.center,
-            child: Padding(
-              padding: const EdgeInsets.all(8.0),
-              child: Text(
-                "Page: $pageNum",
-                style: const TextStyle(
-                  color: Colors.black,
-                  fontSize: 13,
-                  fontWeight: FontWeight.bold,
+      valueListenable: widget.totalPages,
+      builder: (BuildContext context, value, Widget? child) {
+        return ValueListenableBuilder(
+          builder: (BuildContext context, pageNum, Widget? child) {
+            return Container(
+              color: const Color.fromARGB(255, 134, 134, 134).withOpacity(0.8),
+              child: Align(
+                alignment: Alignment.center,
+                child: Padding(
+                  padding: const EdgeInsets.all(8.0),
+                  child: Text(
+                    "Page: ${widget.numFormatter.format(pageNum)} of ${widget.numFormatter.format(widget.totalPages.value)}",
+                    style: const TextStyle(
+                      color: Colors.black,
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ),
+            );
+          },
+          valueListenable: widget.pageNotifier,
         );
       },
-      valueListenable: widget.pageNotifier,
     );
   }
 

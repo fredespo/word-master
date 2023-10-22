@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:word_master/select_all_notifier.dart';
 import 'package:word_master/word_collection.dart';
 
 class WordCollectionCard extends StatefulWidget {
@@ -10,6 +11,7 @@ class WordCollectionCard extends StatefulWidget {
   final Future<bool?> Function(DismissDirection, BuildContext, String)
       confirmDismiss;
   final ValueNotifier<bool> inMultiSelectMode;
+  final SelectAllNotifier selectAllNotifier;
   final Function(WordCollection) onSelected;
   final Function(WordCollection) onDeselected;
 
@@ -23,6 +25,7 @@ class WordCollectionCard extends StatefulWidget {
     required this.inMultiSelectMode,
     required this.onSelected,
     required this.onDeselected,
+    required this.selectAllNotifier,
   });
 
   @override
@@ -32,6 +35,12 @@ class WordCollectionCard extends StatefulWidget {
 class _WordCollectionCardState extends State<WordCollectionCard> {
   final NumberFormat _numberFormat = NumberFormat('#,##0');
   bool _selected = false;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.selectAllNotifier.addListener(_onSelectAll);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -172,5 +181,17 @@ class _WordCollectionCardState extends State<WordCollectionCard> {
         ),
       ),
     );
+  }
+
+  void _onSelectAll() {
+    setState(() {
+      _selected = true;
+    });
+  }
+
+  @override
+  void dispose() {
+    widget.selectAllNotifier.removeListener(_onSelectAll);
+    super.dispose();
   }
 }

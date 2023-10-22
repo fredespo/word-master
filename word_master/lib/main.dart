@@ -4,6 +4,7 @@ import 'package:realm/realm.dart';
 import 'package:word_master/dictionary.dart';
 import 'package:word_master/dictionary_data_manager.dart';
 import 'package:word_master/random_word_fetcher.dart';
+import 'package:word_master/select_all_notifier.dart';
 import 'package:word_master/word_collection_adder.dart';
 import 'package:word_master/word_collection_creator.dart';
 import 'package:word_master/word_collection_data.dart';
@@ -37,6 +38,7 @@ class _MainAppState extends State<MainApp> {
   String migrationError = '';
   ValueNotifier<bool> inMultiSelectMode = ValueNotifier(false);
   List<WordCollection> selectedCollections = [];
+  SelectAllNotifier selectAllNotifier = SelectAllNotifier();
 
   @override
   void initState() {
@@ -78,6 +80,7 @@ class _MainAppState extends State<MainApp> {
     if (migrationError.isNotEmpty) {
       return _migrationError();
     }
+    var allCollections = db.all<WordCollection>();
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
@@ -103,6 +106,30 @@ class _MainAppState extends State<MainApp> {
                           ),
                         ),
                         Text("${selectedCollections.length} selected"),
+                        if (selectedCollections.length < allCollections.length)
+                          Padding(
+                            padding: const EdgeInsets.fromLTRB(15, 3, 10, 0),
+                            child: TextButton(
+                              onPressed: () {
+                                selectAllNotifier.triggerSelectAll();
+                                setState(() {
+                                  selectedCollections.clear();
+                                  selectedCollections.addAll(allCollections);
+                                });
+                              },
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.blue,
+                                backgroundColor: Colors.white,
+                              ),
+                              child: const Text(
+                                "Select All",
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ),
                       ],
                     )
                   : const Text('Word Master');
@@ -180,7 +207,7 @@ class _MainAppState extends State<MainApp> {
                 },
               )
             : WordCollectionsList(
-                wordCollections: db.all<WordCollection>(),
+                wordCollections: allCollections,
                 onTap: (context, wordCollection) {
                   _openWordCollection(context, wordCollection);
                 },
@@ -251,6 +278,7 @@ class _MainAppState extends State<MainApp> {
                     }
                   });
                 },
+                selectAllNotifier: selectAllNotifier,
               ),
         floatingActionButton: isMigrating
             ? null

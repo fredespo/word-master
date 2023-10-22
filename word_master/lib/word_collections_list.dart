@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:realm/realm.dart';
+import 'package:word_master/select_all_notifier.dart';
 import 'package:word_master/word_collection_card.dart';
 import 'package:word_master/word_collection.dart';
 import 'package:word_master/word_collection_card_old.dart';
@@ -13,6 +14,7 @@ class WordCollectionsList extends StatelessWidget {
   final Function(WordCollection) onDismissed;
   final Function(WordCollectionData) onOldDismissed;
   final ValueNotifier<bool> inMultiSelectMode;
+  final SelectAllNotifier selectAllNotifier;
   final Function(WordCollection) onSelected;
   final Function(WordCollection) onDeselected;
 
@@ -27,6 +29,7 @@ class WordCollectionsList extends StatelessWidget {
     required this.inMultiSelectMode,
     required this.onSelected,
     required this.onDeselected,
+    required this.selectAllNotifier,
   });
 
   @override
@@ -66,6 +69,7 @@ class WordCollectionsList extends StatelessWidget {
                   inMultiSelectMode: inMultiSelectMode,
                   onSelected: onSelected,
                   onDeselected: onDeselected,
+                  selectAllNotifier: selectAllNotifier,
                 ),
               );
             } else {

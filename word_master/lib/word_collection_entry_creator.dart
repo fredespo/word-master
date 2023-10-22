@@ -302,7 +302,7 @@ class _WordCollectionEntryCreatorState
         widget.db.find<Dictionary>(dictionaryId)!.size++;
 
         // add to word collections
-        widget.wordCollections.forEach((wordCollection) {
+        for (var wordCollection in widget.wordCollections) {
           var wordCollectionEntry = WordCollectionEntry(
             wordCollection.id,
             dictionaryId,
@@ -311,7 +311,7 @@ class _WordCollectionEntryCreatorState
           );
           widget.db.add(wordCollectionEntry);
           wordCollection.size++;
-        });
+        }
         if (widget.wordCollectionSizeNotifier != null) {
           widget.wordCollectionSizeNotifier!.value++;
         }

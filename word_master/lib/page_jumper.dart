@@ -5,7 +5,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:word_master/page_jumper_activation_notifier.dart';
 
 class PageJumper extends StatefulWidget {
-  final int totalPageCount;
+  final ValueNotifier<int> totalPageCount;
   final Function(int) onGoToPage;
   final ValueNotifier<double> parentHeight;
   final ValueNotifier<int> pageNumNotifier;
@@ -35,6 +35,7 @@ class _PageJumperState extends State<PageJumper> {
   DateTime? lastPageNumUpdate;
   bool _scrollingFromPageIncrementOrDecrement = false;
   bool _showLabel = false;
+  int totalPageCount = 0;
 
   @override
   void initState() {
@@ -43,6 +44,8 @@ class _PageJumperState extends State<PageJumper> {
     widget.activationNotifier.addListener(_turnOn);
     widget.scrollController.addListener(_onScroll);
     widget.parentHeight.addListener(_calcMaxDragPosition);
+    widget.totalPageCount.addListener(_onTotalPageCountChange);
+    totalPageCount = widget.totalPageCount.value;
   }
 
   @override
@@ -51,6 +54,7 @@ class _PageJumperState extends State<PageJumper> {
     widget.activationNotifier.removeListener(_turnOn);
     widget.scrollController.removeListener(_onScroll);
     widget.parentHeight.removeListener(_calcMaxDragPosition);
+    widget.totalPageCount.removeListener(_onTotalPageCountChange);
     super.dispose();
   }
 
@@ -71,7 +75,7 @@ class _PageJumperState extends State<PageJumper> {
     SchedulerBinding.instance.addPostFrameCallback((_) {
       setState(() {
         _pageNum = newPageNum;
-        _dragPosition = (newPageNum / widget.totalPageCount) * _maxDragPosition;
+        _dragPosition = (newPageNum / totalPageCount) * _maxDragPosition;
       });
     });
   }
@@ -162,12 +166,20 @@ class _PageJumperState extends State<PageJumper> {
       } else if (_dragPosition > _maxDragPosition) {
         _dragPosition = _maxDragPosition;
       }
-      var fraction = _dragPosition / _maxDragPosition;
-      _pageNum = (fraction * widget.totalPageCount).round();
-      if (_pageNum < 1) {
-        _pageNum = 1;
-      }
+      _pageNum = _calcPageNumFromDragPos();
     });
+  }
+
+  int _calcPageNumFromDragPos() {
+    var fraction = _dragPosition / _maxDragPosition;
+    var pageNum = (fraction * totalPageCount).round();
+    if (pageNum < 1) {
+      pageNum = 1;
+    }
+    if (pageNum > totalPageCount) {
+      pageNum = totalPageCount;
+    }
+    return pageNum;
   }
 
   void _onVerticalDragEnd(DragEndDetails details) {
@@ -195,7 +207,7 @@ class _PageJumperState extends State<PageJumper> {
     return IconButton(
       icon: const Icon(Icons.keyboard_arrow_down),
       onPressed: () {
-        if (widget.pageNumNotifier.value < widget.totalPageCount) {
+        if (widget.pageNumNotifier.value < totalPageCount) {
           _scrollingFromPageIncrementOrDecrement = true;
           widget.onGoToPage(widget.pageNumNotifier.value + 1);
         }
@@ -233,6 +245,13 @@ class _PageJumperState extends State<PageJumper> {
   void _calcMaxDragPosition() {
     setState(() {
       _maxDragPosition = widget.parentHeight.value - 110;
+    });
+  }
+
+  void _onTotalPageCountChange() {
+    setState(() {
+      totalPageCount = widget.totalPageCount.value;
+      _pageNum = _calcPageNumFromDragPos();
     });
   }
 }

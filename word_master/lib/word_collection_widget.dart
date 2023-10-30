@@ -46,9 +46,12 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
   bool _viewingFaves = false;
   final GlobalKey firstPageKey = GlobalKey();
   final pagesKey = GlobalKey();
+  double normalScrollOffset = 0;
+  double favoritesOnlyScrollOffset = 0;
 
   @override
   void initState() {
+    widget.scrollController.addListener(_onScroll);
     super.initState();
   }
 
@@ -64,11 +67,13 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
             onViewFaves: () {
               setState(() {
                 _viewingFaves = true;
+                widget.scrollController.jumpTo(favoritesOnlyScrollOffset);
               });
             },
             onViewAll: () {
               setState(() {
                 _viewingFaves = false;
+                widget.scrollController.jumpTo(normalScrollOffset);
               });
             },
             onAddEntries: widget.onAddEntries,
@@ -99,7 +104,7 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
           ),
         ),
         PageJumper(
-          totalPageCount: widget.totalPages.value,
+          totalPageCount: widget.totalPages,
           onGoToPage: _jumpToPage,
           parentHeight: widget.pagesViewportHeight,
           pageNumNotifier: widget.pageNumNotifier,
@@ -181,5 +186,13 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
     widget.scrollController.jumpTo(
       ((pageNum - 1) * widget.pageHeight.value.toDouble()) + 10,
     );
+  }
+
+  void _onScroll() {
+    if (_viewingFaves) {
+      favoritesOnlyScrollOffset = widget.scrollController.offset;
+    } else {
+      normalScrollOffset = widget.scrollController.offset;
+    }
   }
 }

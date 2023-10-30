@@ -9,6 +9,8 @@ class WordCollectionActionMenu extends StatelessWidget {
   static const actionValueViewAll = 3;
   final Function() onCreateEntry;
   static const actionValueCreateEntry = 4;
+  final Function() onJumpToPage;
+  static const actionValueJumpToPage = 5;
 
   const WordCollectionActionMenu({
     super.key,
@@ -16,6 +18,7 @@ class WordCollectionActionMenu extends StatelessWidget {
     required this.onViewAll,
     required this.onAddEntries,
     required this.onCreateEntry,
+    required this.onJumpToPage,
   });
 
   @override
@@ -39,6 +42,10 @@ class WordCollectionActionMenu extends StatelessWidget {
             value: actionValueViewAll,
             child: Text('View all'),
           ),
+          const PopupMenuItem(
+            value: actionValueJumpToPage,
+            child: Text('Jump to page'),
+          ),
         ];
       },
       onSelected: _handleMenuSelection,
@@ -61,6 +68,10 @@ class WordCollectionActionMenu extends StatelessWidget {
 
       case actionValueCreateEntry:
         onCreateEntry();
+        break;
+
+      case actionValueJumpToPage:
+        onJumpToPage();
         break;
     }
   }

@@ -1,19 +1,22 @@
 import 'dart:async';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
 import 'package:intl/intl.dart';
 
 class WordCollectionPageIndicator extends StatefulWidget {
   final ScrollController scrollController;
-  final ValueNotifier<int> pageNotifier;
+  final ValueNotifier<int> pageHeight;
   final ValueNotifier<int> totalPages;
+  final ValueNotifier<int> pageNumNotifier;
   final numFormatter = NumberFormat('#,##0');
 
   WordCollectionPageIndicator({
     super.key,
     required this.scrollController,
-    required this.pageNotifier,
+    required this.pageHeight,
     required this.totalPages,
+    required this.pageNumNotifier,
   });
 
   @override
@@ -25,12 +28,14 @@ class _WordCollectionPageIndicatorState
     extends State<WordCollectionPageIndicator> {
   bool scrolledRecently = false;
   Timer? fadeTimer;
+  int pageNum = 1;
 
   @override
   void initState() {
     super.initState();
     widget.scrollController.addListener(() {
       setState(() {
+        pageNum = _calcPageNum();
         scrolledRecently = true;
         fadeTimer?.cancel();
         fadeTimer = Timer(const Duration(milliseconds: 1500), () {
@@ -54,7 +59,12 @@ class _WordCollectionPageIndicatorState
       valueListenable: widget.totalPages,
       builder: (BuildContext context, value, Widget? child) {
         return ValueListenableBuilder(
+          valueListenable: widget.pageHeight,
           builder: (BuildContext context, pageNum, Widget? child) {
+            pageNum = _calcPageNum();
+            SchedulerBinding.instance.addPostFrameCallback((_) {
+              widget.pageNumNotifier.value = pageNum;
+            });
             return Container(
               color: const Color.fromARGB(255, 134, 134, 134).withOpacity(0.8),
               child: Align(
@@ -73,7 +83,6 @@ class _WordCollectionPageIndicatorState
               ),
             );
           },
-          valueListenable: widget.pageNotifier,
         );
       },
     );
@@ -90,6 +99,16 @@ class _WordCollectionPageIndicatorState
         );
       },
     );
+  }
+
+  int _calcPageNum() {
+    int pageHeight = widget.pageHeight.value;
+    int scrollOffset = widget.scrollController.offset.toInt();
+    int pageNum = (scrollOffset / pageHeight).ceil();
+    if (pageNum < 1) {
+      pageNum = 1;
+    }
+    return pageNum;
   }
 
   @override

@@ -54,10 +54,8 @@ class _WordCollectionPageCellState extends State<WordCollectionPageCell> {
       child: SizedBox(
         height: 50,
         child: InkWell(
-          onLongPress: widget.entry != null ? () => _toggleIsFavorite() : null,
-          onTap: widget.entry != null
-              ? () => widget.showDefinitions(widget.entry!)
-              : null,
+          onLongPress: onLongPress,
+          onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(4.0),
             child: Stack(
@@ -70,6 +68,18 @@ class _WordCollectionPageCellState extends State<WordCollectionPageCell> {
         ),
       ),
     );
+  }
+
+  void onLongPress() {
+    if (widget.entry != null) {
+      _toggleIsFavorite();
+    }
+  }
+
+  void onTap() {
+    if (widget.entry != null) {
+      widget.showDefinitions(widget.entry!);
+    }
   }
 
   Widget _buildText() {

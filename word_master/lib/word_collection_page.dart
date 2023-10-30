@@ -5,12 +5,15 @@ import 'package:word_master/word_collection_entry.dart';
 import 'package:word_master/word_collection_page_cell.dart';
 
 class WordCollectionPage extends StatelessWidget {
+  final int pageNum;
   final int numColumns;
   final int startIndex;
   final int endIndex;
   final int numTotalEntries;
   final List<WordCollectionEntry> entries;
   final Realm db;
+  final ScrollController scrollController;
+  final ValueNotifier<int> pageHeight;
 
   const WordCollectionPage({
     super.key,
@@ -20,12 +23,32 @@ class WordCollectionPage extends StatelessWidget {
     required this.endIndex,
     required this.numTotalEntries,
     required this.entries,
+    required this.scrollController,
+    required this.pageNum,
+    required this.pageHeight,
   });
 
   @override
   Widget build(BuildContext context) {
+    return ValueListenableBuilder(
+      valueListenable: pageHeight,
+      builder: (BuildContext context, pageHeightValue, Widget? child) {
+        int scrollOffset = scrollController.offset.toInt();
+        int currentPageNum = (scrollOffset / pageHeightValue).ceil();
+
+        return (currentPageNum - pageNum).abs() <= 1
+            ? _buildPage(context)
+            : Container(
+                height: pageHeightValue.toDouble(),
+              );
+      },
+    );
+  }
+
+  Widget _buildPage(BuildContext context) {
     List<Widget> rows = [];
-    for (int i = 0; i < numTotalEntries / numColumns; i++) {
+    var numRows = numTotalEntries / numColumns;
+    for (int i = 0; i < numRows; i++) {
       rows.add(_buildTableRow(context, i));
     }
     return Padding(
@@ -39,10 +62,10 @@ class WordCollectionPage extends StatelessWidget {
 
   Widget _buildTableRow(BuildContext context, int rowIndex) {
     List<TableCell> currentRowCells = [];
+    var start = startIndex + rowIndex * numColumns;
+    var end = startIndex + ((rowIndex + 1) * numColumns);
 
-    for (int i = startIndex + rowIndex * numColumns;
-        i < startIndex + ((rowIndex + 1) * numColumns);
-        i++) {
+    for (int i = start; i < end; i++) {
       int colNum = i % numColumns;
       Color bgColor = colNum % 2 == 0 ? Colors.grey.shade100 : Colors.white;
       var entry = i < endIndex ? entries[i] : null;

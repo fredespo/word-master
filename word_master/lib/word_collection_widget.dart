@@ -3,11 +3,12 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:realm/realm.dart';
+import 'package:word_master/page_jumper_activation_notifier.dart';
 import 'package:word_master/word_collection_action_menu.dart';
 import 'package:word_master/word_collection_entry.dart';
 import 'package:word_master/word_collection_page.dart';
-import 'package:visibility_detector/visibility_detector.dart';
 import 'package:word_master/word_collection_page_indicator.dart';
+import 'package:word_master/page_jumper.dart';
 
 class WordCollectionWidget extends StatefulWidget {
   final Realm db;
@@ -19,9 +20,12 @@ class WordCollectionWidget extends StatefulWidget {
   static const int numWordsPerPage = 192;
   final RealmResults<WordCollectionEntry> entries;
   final ValueNotifier<int> sizeNotifier;
-  final ValueNotifier<int> currentPageNum = ValueNotifier<int>(1);
+  final ValueNotifier<int> pageHeight = ValueNotifier<int>(1);
   final ValueNotifier<int> totalPages;
   final ScrollController scrollController = ScrollController();
+  final ValueNotifier<double> pagesViewportHeight = ValueNotifier<double>(1000);
+  final ValueNotifier<int> pageNumNotifier = ValueNotifier<int>(1);
+  final pageJumperActivationNotifier = PageJumperActivationNotifier();
 
   WordCollectionWidget({
     super.key,
@@ -40,9 +44,17 @@ class WordCollectionWidget extends StatefulWidget {
 
 class _WordCollectionWidgetState extends State<WordCollectionWidget> {
   bool _viewingFaves = false;
+  final GlobalKey firstPageKey = GlobalKey();
+  final pagesKey = GlobalKey();
+
+  @override
+  void initState() {
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
+    SchedulerBinding.instance.addPostFrameCallback(_calcPagesViewportHeight);
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -61,6 +73,9 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
             },
             onAddEntries: widget.onAddEntries,
             onCreateEntry: widget.onCreateEntry,
+            onJumpToPage: () {
+              widget.pageJumperActivationNotifier.turnOnPageJumper();
+            },
           )
         ],
       ),
@@ -75,28 +90,31 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
         Positioned(
           top: 0,
           left: 0,
-          right: 0,
+          right: 32,
           child: WordCollectionPageIndicator(
             scrollController: widget.scrollController,
-            pageNotifier: widget.currentPageNum,
+            pageHeight: widget.pageHeight,
             totalPages: widget.totalPages,
+            pageNumNotifier: widget.pageNumNotifier,
           ),
+        ),
+        PageJumper(
+          totalPageCount: widget.totalPages.value,
+          onGoToPage: _jumpToPage,
+          parentHeight: widget.pagesViewportHeight,
+          pageNumNotifier: widget.pageNumNotifier,
+          activationNotifier: widget.pageJumperActivationNotifier,
+          scrollController: widget.scrollController,
         ),
       ],
     );
   }
 
   Widget _buildPages() {
-    return InteractiveViewer(
-      child: Container(
-        decoration: BoxDecoration(color: widget.bgColor),
-        child: ValueListenableBuilder(
-          valueListenable: widget.sizeNotifier,
-          builder: (BuildContext context, size, Widget? child) {
-            return _buildPageList();
-          },
-        ),
-      ),
+    return Container(
+      key: pagesKey,
+      decoration: BoxDecoration(color: widget.bgColor),
+      child: _buildPageList(),
     );
   }
 
@@ -113,16 +131,7 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
       controller: widget.scrollController,
       itemCount: pageCount,
       itemBuilder: (context, index) {
-        Widget item = VisibilityDetector(
-          key: Key('page_$index'),
-          onVisibilityChanged: (VisibilityInfo info) {
-            if (info.visibleFraction > 0.5) {
-              widget.currentPageNum.value = index + 1;
-            }
-          },
-          child: _buildPage(index, entries),
-        );
-        return item;
+        return _buildPage(index, entries);
       },
     );
   }
@@ -132,13 +141,45 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
     int endIndex =
         min((index + 1) * WordCollectionWidget.numWordsPerPage, entries.length);
     Widget page = WordCollectionPage(
+      key: index == 0 ? firstPageKey : null,
       numColumns: widget.numColumns,
       db: widget.db,
       startIndex: startIndex,
       endIndex: endIndex,
       numTotalEntries: WordCollectionWidget.numWordsPerPage,
       entries: entries,
+      scrollController: widget.scrollController,
+      pageNum: index + 1,
+      pageHeight: widget.pageHeight,
     );
+    if (index == 0) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        final RenderObject? renderObject =
+            firstPageKey.currentContext?.findRenderObject();
+        if (renderObject == null) {
+          return;
+        }
+        RenderBox renderBox = renderObject as RenderBox;
+        final height = renderBox.size.height;
+        widget.pageHeight.value = height.toInt();
+      });
+    }
     return page;
+  }
+
+  void _calcPagesViewportHeight(Duration _) {
+    final RenderObject? renderObject =
+        pagesKey.currentContext?.findRenderObject();
+    if (renderObject == null) {
+      return;
+    }
+    RenderBox renderBox = renderObject as RenderBox;
+    widget.pagesViewportHeight.value = renderBox.size.height;
+  }
+
+  void _jumpToPage(int pageNum) {
+    widget.scrollController.jumpTo(
+      ((pageNum - 1) * widget.pageHeight.value.toDouble()) + 10,
+    );
   }
 }

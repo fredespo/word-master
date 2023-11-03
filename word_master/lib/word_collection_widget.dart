@@ -95,7 +95,7 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
         Positioned(
           top: 0,
           left: 0,
-          right: 32,
+          right: 0,
           child: WordCollectionPageIndicator(
             scrollController: widget.scrollController,
             pageHeight: widget.pageHeight,

@@ -4,7 +4,7 @@ import 'package:word_master/definitions_dialog.dart';
 import 'package:word_master/word_collection_entry.dart';
 import 'package:word_master/word_collection_page_cell.dart';
 
-class WordCollectionPage extends StatelessWidget {
+class WordCollectionPage extends StatefulWidget {
   final int pageNum;
   final int numColumns;
   final int startIndex;
@@ -12,7 +12,7 @@ class WordCollectionPage extends StatelessWidget {
   final int numTotalEntries;
   final List<WordCollectionEntry> entries;
   final Realm db;
-  final ScrollController scrollController;
+  final ValueNotifier<int> pageNumNotifier;
   final ValueNotifier<int> pageHeight;
 
   const WordCollectionPage({
@@ -23,31 +23,54 @@ class WordCollectionPage extends StatelessWidget {
     required this.endIndex,
     required this.numTotalEntries,
     required this.entries,
-    required this.scrollController,
     required this.pageNum,
     required this.pageHeight,
+    required this.pageNumNotifier,
   });
 
   @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder(
-      valueListenable: pageHeight,
-      builder: (BuildContext context, pageHeightValue, Widget? child) {
-        int scrollOffset = scrollController.offset.toInt();
-        int currentPageNum = (scrollOffset / pageHeightValue).ceil();
+  State<WordCollectionPage> createState() => _WordCollectionPageState();
+}
 
-        return (currentPageNum - pageNum).abs() <= 1
-            ? _buildPage(context)
-            : Container(
+class _WordCollectionPageState extends State<WordCollectionPage> {
+  int currentPageNum = 1;
+
+  @override
+  void initState() {
+    super.initState();
+    widget.pageNumNotifier.addListener(onPageNumChange);
+    currentPageNum = widget.pageNumNotifier.value;
+  }
+
+  @override
+  void dispose() {
+    widget.pageNumNotifier.removeListener(onPageNumChange);
+    super.dispose();
+  }
+
+  void onPageNumChange() {
+    setState(() {
+      currentPageNum = widget.pageNumNotifier.value;
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return (currentPageNum - widget.pageNum).abs() <= 1
+        ? _buildPage(context)
+        : ValueListenableBuilder(
+            valueListenable: widget.pageHeight,
+            builder: (BuildContext context, pageHeightValue, Widget? child) {
+              return Container(
                 height: pageHeightValue.toDouble(),
               );
-      },
-    );
+            },
+          );
   }
 
   Widget _buildPage(BuildContext context) {
     List<Widget> rows = [];
-    var numRows = numTotalEntries / numColumns;
+    var numRows = widget.numTotalEntries / widget.numColumns;
     for (int i = 0; i < numRows; i++) {
       rows.add(_buildTableRow(context, i));
     }
@@ -62,19 +85,19 @@ class WordCollectionPage extends StatelessWidget {
 
   Widget _buildTableRow(BuildContext context, int rowIndex) {
     List<TableCell> currentRowCells = [];
-    var start = startIndex + rowIndex * numColumns;
-    var end = startIndex + ((rowIndex + 1) * numColumns);
+    var start = widget.startIndex + rowIndex * widget.numColumns;
+    var end = widget.startIndex + ((rowIndex + 1) * widget.numColumns);
 
     for (int i = start; i < end; i++) {
-      int colNum = i % numColumns;
+      int colNum = i % widget.numColumns;
       Color bgColor = colNum % 2 == 0 ? Colors.grey.shade100 : Colors.white;
-      var entry = i < endIndex ? entries[i] : null;
+      var entry = i < widget.endIndex ? widget.entries[i] : null;
       currentRowCells.add(TableCell(
         child: _buildTableCellContent(entry, context, bgColor),
       ));
     }
 
-    while (currentRowCells.length < numColumns) {
+    while (currentRowCells.length < widget.numColumns) {
       currentRowCells.add(TableCell(
           child: _buildTableCellContent(null, context, Colors.white)));
     }
@@ -102,19 +125,19 @@ class WordCollectionPage extends StatelessWidget {
       },
       onMarkedFavorite: (wordOrPhrase) {
         if (entry != null) {
-          db.write(() {
+          widget.db.write(() {
             entry.isFavorite = true;
           });
         }
       },
       onUnmarkedFavorite: (wordOrPhrase) {
         if (entry != null) {
-          db.write(() {
+          widget.db.write(() {
             entry.isFavorite = false;
           });
         }
       },
-      db: db,
+      db: widget.db,
     );
   }
 
@@ -124,7 +147,7 @@ class WordCollectionPage extends StatelessWidget {
       builder: (context) {
         return DefinitionsDialog(
           wordOrPhrase: entry.wordOrPhrase,
-          db: db,
+          db: widget.db,
           dictionaryId: entry.dictionaryId,
         );
       },
@@ -132,7 +155,7 @@ class WordCollectionPage extends StatelessWidget {
   }
 
   void onFavoriteToggle(WordCollectionEntry entry) {
-    db.write(() {
+    widget.db.write(() {
       entry.isFavorite = !entry.isFavorite;
     });
   }

@@ -5,14 +5,13 @@ import 'package:word_master/dictionary.dart';
 import 'package:word_master/dictionary_data_manager.dart';
 import 'package:word_master/random_word_fetcher.dart';
 import 'package:word_master/select_all_notifier.dart';
-import 'package:word_master/word_collection_adder.dart';
 import 'package:word_master/word_collection_creator.dart';
 import 'package:word_master/word_collection_data.dart';
 import 'package:word_master/word_collection_entry.dart';
 import 'package:word_master/word_collection_entry_creator.dart';
 import 'package:word_master/word_collection_migration_dialog.dart';
+import 'package:word_master/word_collection_tabs.dart';
 import 'package:word_master/word_collections_list.dart';
-import 'package:word_master/word_collection_widget.dart';
 import 'package:word_master/word_collection.dart';
 
 import 'data_migration_widget.dart';
@@ -300,69 +299,13 @@ class _MainAppState extends State<MainApp> {
     BuildContext context,
     WordCollection wordCollection,
   ) {
-    ValueNotifier<int> wordCollectionSizeNotifier = ValueNotifier(
-      wordCollection.size,
-    );
     Navigator.push(
       context,
       MaterialPageRoute(
-        builder: (context) => WordCollectionWidget(
-            sizeNotifier: wordCollectionSizeNotifier,
-            db: db,
-            name: wordCollection.name,
-            onAddEntries: () {
-              showDialog(
-                context: context,
-                builder: (context) {
-                  return WordCollectionAdder(
-                    wordCollection: wordCollection,
-                    dictionaries: db.all<Dictionary>().query("size > 0"),
-                    onAddEntries: (numEntriesPerDictionaryId) {
-                      db.write(() {
-                        wordCollection.size += numEntriesPerDictionaryId.values
-                            .reduce((a, b) => a + b);
-                        wordCollectionSizeNotifier.value = wordCollection.size;
-                        for (var dictionaryId
-                            in numEntriesPerDictionaryId.keys) {
-                          var numEntries =
-                              numEntriesPerDictionaryId[dictionaryId]!;
-                          var words = RandomWordFetcher.getRandomWords(
-                            db,
-                            dictionaryId,
-                            numEntries,
-                          );
-                          for (var word in words) {
-                            db.add(WordCollectionEntry(
-                              wordCollection.id,
-                              dictionaryId,
-                              word,
-                              false,
-                            ));
-                          }
-                        }
-                      });
-                    },
-                    db: db,
-                  );
-                },
-              );
-            },
-            onCreateEntry: () {
-              showDialog(
-                barrierDismissible: false,
-                context: context,
-                builder: (context) {
-                  return WordCollectionEntryCreator(
-                    db: db,
-                    wordCollections: [wordCollection],
-                    wordCollectionSizeNotifier: wordCollectionSizeNotifier,
-                  );
-                },
-              );
-            },
-            entries: db
-                .all<WordCollectionEntry>()
-                .query("wordCollectionId == '${wordCollection.id}'")),
+        builder: (context) => WordCollectionTabs(
+          db: db,
+          initialWordCollections: [wordCollection],
+        ),
       ),
     );
   }

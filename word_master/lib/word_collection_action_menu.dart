@@ -11,6 +11,10 @@ class WordCollectionActionMenu extends StatelessWidget {
   static const actionValueCreateEntry = 4;
   final Function() onJumpToPage;
   static const actionValueJumpToPage = 5;
+  final Function() onOpenInNewTab;
+  static const actionValueOpenInNewTab = 6;
+  final Function() onCloseCurrentTab;
+  static const actionValueCloseCurrentTab = 7;
 
   const WordCollectionActionMenu({
     super.key,
@@ -19,6 +23,8 @@ class WordCollectionActionMenu extends StatelessWidget {
     required this.onAddEntries,
     required this.onCreateEntry,
     required this.onJumpToPage,
+    required this.onOpenInNewTab,
+    required this.onCloseCurrentTab,
   });
 
   @override
@@ -26,6 +32,10 @@ class WordCollectionActionMenu extends StatelessWidget {
     return PopupMenuButton(
       itemBuilder: (BuildContext context) {
         return [
+          const PopupMenuItem(
+            value: actionValueOpenInNewTab,
+            child: Text('Open in new tab'),
+          ),
           const PopupMenuItem(
             value: actionValueAddEntries,
             child: Text('Add random entries'),
@@ -45,6 +55,10 @@ class WordCollectionActionMenu extends StatelessWidget {
           const PopupMenuItem(
             value: actionValueJumpToPage,
             child: Text('Jump to page'),
+          ),
+          const PopupMenuItem(
+            value: actionValueCloseCurrentTab,
+            child: Text('Close current tab'),
           ),
         ];
       },
@@ -72,6 +86,14 @@ class WordCollectionActionMenu extends StatelessWidget {
 
       case actionValueJumpToPage:
         onJumpToPage();
+        break;
+
+      case actionValueOpenInNewTab:
+        onOpenInNewTab();
+        break;
+
+      case actionValueCloseCurrentTab:
+        onCloseCurrentTab();
         break;
     }
   }

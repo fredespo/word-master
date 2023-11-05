@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:realm/realm.dart';
 import 'package:word_master/page_jumper_activation_notifier.dart';
-import 'package:word_master/word_collection_action_menu.dart';
 import 'package:word_master/word_collection_entry.dart';
 import 'package:word_master/word_collection_page.dart';
 import 'package:word_master/word_collection_page_indicator.dart';
@@ -13,8 +12,6 @@ import 'package:word_master/page_jumper.dart';
 class WordCollectionWidget extends StatefulWidget {
   final Realm db;
   final String name;
-  final Function() onAddEntries;
-  final Function() onCreateEntry;
   final Color bgColor = const Color.fromARGB(255, 134, 134, 134);
   final int numColumns = 6;
   static const int numWordsPerPage = 192;
@@ -22,19 +19,24 @@ class WordCollectionWidget extends StatefulWidget {
   final ValueNotifier<int> sizeNotifier;
   final ValueNotifier<int> pageHeight = ValueNotifier<int>(1);
   final ValueNotifier<int> totalPages;
-  final ScrollController scrollController = ScrollController();
+  final ScrollController scrollController;
   final ValueNotifier<double> pagesViewportHeight = ValueNotifier<double>(1000);
-  final ValueNotifier<int> pageNumNotifier = ValueNotifier<int>(1);
-  final pageJumperActivationNotifier = PageJumperActivationNotifier();
+  final ValueNotifier<int> pageNumNotifier;
+  final PageJumperActivationNotifier pageJumperActivationNotifier;
+  final ValueNotifier<bool> viewingFavesNotifier;
+  final ValueNotifier<double> scrollOffsetNotifier;
 
   WordCollectionWidget({
     super.key,
     required this.db,
     required this.name,
-    required this.onAddEntries,
     required this.entries,
     required this.sizeNotifier,
-    required this.onCreateEntry,
+    required this.viewingFavesNotifier,
+    required this.pageJumperActivationNotifier,
+    required this.pageNumNotifier,
+    required this.scrollController,
+    required this.scrollOffsetNotifier,
   }) : totalPages =
             ValueNotifier<int>((entries.length / numWordsPerPage).ceil());
 
@@ -52,43 +54,45 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
   @override
   void initState() {
     widget.scrollController.addListener(_onScroll);
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      widget.scrollController.jumpTo(widget.scrollOffsetNotifier.value);
+    });
+    widget.viewingFavesNotifier.addListener(_onViewingFavesChange);
+    _viewingFaves = widget.viewingFavesNotifier.value;
+    widget.sizeNotifier.addListener(_onSizeChange);
     super.initState();
+  }
+
+  @override
+  void dispose() {
+    widget.scrollController.removeListener(_onScroll);
+    widget.viewingFavesNotifier.removeListener(_onViewingFavesChange);
+    widget.sizeNotifier.removeListener(_onSizeChange);
+    super.dispose();
+  }
+
+  void _onSizeChange() {
+    setState(() {});
+  }
+
+  void _onViewingFavesChange() {
+    setState(() {
+      _viewingFaves = widget.viewingFavesNotifier.value;
+      if (_viewingFaves) {
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          widget.scrollController.jumpTo(favoritesOnlyScrollOffset);
+        });
+      } else {
+        SchedulerBinding.instance.addPostFrameCallback((_) {
+          widget.scrollController.jumpTo(normalScrollOffset);
+        });
+      }
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     SchedulerBinding.instance.addPostFrameCallback(_calcPagesViewportHeight);
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-            widget.name.isNotEmpty ? widget.name : 'Untitled Word Collection'),
-        actions: [
-          WordCollectionActionMenu(
-            onViewFaves: () {
-              setState(() {
-                _viewingFaves = true;
-                widget.scrollController.jumpTo(favoritesOnlyScrollOffset);
-              });
-            },
-            onViewAll: () {
-              setState(() {
-                _viewingFaves = false;
-                widget.scrollController.jumpTo(normalScrollOffset);
-              });
-            },
-            onAddEntries: widget.onAddEntries,
-            onCreateEntry: widget.onCreateEntry,
-            onJumpToPage: () {
-              widget.pageJumperActivationNotifier.turnOnPageJumper();
-            },
-          )
-        ],
-      ),
-      body: _buildBody(),
-    );
-  }
-
-  Widget _buildBody() {
     return Stack(
       children: [
         _buildPages(),
@@ -153,9 +157,9 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
       endIndex: endIndex,
       numTotalEntries: WordCollectionWidget.numWordsPerPage,
       entries: entries,
-      scrollController: widget.scrollController,
       pageNum: index + 1,
       pageHeight: widget.pageHeight,
+      pageNumNotifier: widget.pageNumNotifier,
     );
     if (index == 0) {
       SchedulerBinding.instance.addPostFrameCallback((_) {
@@ -194,5 +198,6 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
     } else {
       normalScrollOffset = widget.scrollController.offset;
     }
+    widget.scrollOffsetNotifier.value = widget.scrollController.offset;
   }
 }

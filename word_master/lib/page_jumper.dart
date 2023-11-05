@@ -28,7 +28,7 @@ class PageJumper extends StatefulWidget {
 
 class _PageJumperState extends State<PageJumper> {
   double _dragPosition = 0;
-  double _maxDragPosition = 0;
+  double _maxDragPosition = 1;
   int _pageNum = 1;
   bool _isOn = false;
   Timer? turnOffTimer;
@@ -44,6 +44,7 @@ class _PageJumperState extends State<PageJumper> {
     widget.activationNotifier.addListener(_turnOn);
     widget.scrollController.addListener(_onScroll);
     widget.parentHeight.addListener(_calcMaxDragPosition);
+    _calcMaxDragPosition();
     widget.totalPageCount.addListener(_onTotalPageCountChange);
     totalPageCount = widget.totalPageCount.value;
   }
@@ -55,6 +56,7 @@ class _PageJumperState extends State<PageJumper> {
     widget.scrollController.removeListener(_onScroll);
     widget.parentHeight.removeListener(_calcMaxDragPosition);
     widget.totalPageCount.removeListener(_onTotalPageCountChange);
+    turnOffTimer?.cancel();
     super.dispose();
   }
 
@@ -245,6 +247,9 @@ class _PageJumperState extends State<PageJumper> {
   void _calcMaxDragPosition() {
     setState(() {
       _maxDragPosition = widget.parentHeight.value - 110;
+      if (_maxDragPosition < 1) {
+        _maxDragPosition = 1;
+      }
     });
   }
 

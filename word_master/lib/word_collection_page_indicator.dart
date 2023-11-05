@@ -33,15 +33,17 @@ class _WordCollectionPageIndicatorState
   @override
   void initState() {
     super.initState();
-    widget.scrollController.addListener(() {
-      setState(() {
-        pageNum = _calcPageNum();
-        scrolledRecently = true;
-        fadeTimer?.cancel();
-        fadeTimer = Timer(const Duration(milliseconds: 1500), () {
-          setState(() {
-            scrolledRecently = false;
-          });
+    widget.scrollController.addListener(onScroll);
+  }
+
+  void onScroll() {
+    setState(() {
+      pageNum = _calcPageNum();
+      scrolledRecently = true;
+      fadeTimer?.cancel();
+      fadeTimer = Timer(const Duration(milliseconds: 1500), () {
+        setState(() {
+          scrolledRecently = false;
         });
       });
     });
@@ -114,6 +116,7 @@ class _WordCollectionPageIndicatorState
   @override
   void dispose() {
     fadeTimer?.cancel();
+    widget.scrollController.removeListener(onScroll);
     super.dispose();
   }
 }

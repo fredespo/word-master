@@ -3,7 +3,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:realm/realm.dart';
 import 'package:word_master/imported_dictionary.dart';
+import 'package:word_master/select_all_notifier.dart';
 import 'package:word_master/word_collection.dart';
+import 'package:word_master/word_collection_card.dart';
 import 'package:word_master/word_collection_entry.dart';
 
 import 'dictionary.dart';
@@ -15,6 +17,7 @@ class WordCollectionEntryCreator extends StatefulWidget {
   final List<WordCollection> wordCollections;
   final ValueNotifier<int>? wordCollectionSizeNotifier;
   final Function()? onComplete;
+  final bool allowWordCollectionSelection;
 
   const WordCollectionEntryCreator({
     super.key,
@@ -22,6 +25,7 @@ class WordCollectionEntryCreator extends StatefulWidget {
     required this.wordCollections,
     this.wordCollectionSizeNotifier,
     this.onComplete,
+    this.allowWordCollectionSelection = false,
   });
 
   @override
@@ -38,6 +42,7 @@ class _WordCollectionEntryCreatorState
   bool wordOrPhraseExistsInDictionary = false;
   int pageNum = 1;
   Map<String, List<String>> definitions = {};
+  Set<String> selectedWordCollectionIds = {};
 
   @override
   void initState() {
@@ -48,6 +53,10 @@ class _WordCollectionEntryCreatorState
         .map((e) => DictionaryDropdownItem(e))
         .toList();
     dictionaryDropdownItems.add(DictionaryDropdownItem(null));
+    if (widget.allowWordCollectionSelection) {
+      selectedWordCollectionIds =
+          widget.wordCollections.map((e) => e.id).toSet();
+    }
   }
 
   ImportedDictionary? getImportedDictionary(String dictionaryId) {
@@ -73,13 +82,19 @@ class _WordCollectionEntryCreatorState
 
   Widget _buildContent() {
     if (pageNum == 1) {
-      return _buildPageOne();
+      return _buildDictionarySelectionPage();
     }
 
-    return _buildPageTwo();
+    if (pageNum == 2) {
+      return widget.allowWordCollectionSelection
+          ? _buildWordCollectionSelectionPage()
+          : _buildEntryCreationPage();
+    }
+
+    return _buildEntryCreationPage();
   }
 
-  Widget _buildPageOne() {
+  Widget _buildDictionarySelectionPage() {
     return Column(
       children: [
         _buildDictionarySelector(),
@@ -106,7 +121,53 @@ class _WordCollectionEntryCreatorState
     );
   }
 
-  Widget _buildPageTwo() {
+  Widget _buildWordCollectionSelectionPage() {
+    // select multiple word collections
+    var allWordCollections = widget.db.all<WordCollection>();
+    return SizedBox(
+      width: 300,
+      child: Column(
+        children: [
+          const SizedBox(
+            width: 200,
+            child: Text(
+              'Select word collections where the new entry will be saved',
+              textAlign: TextAlign.center,
+            ),
+          ),
+          Expanded(
+            child: ListView.builder(
+              itemCount: allWordCollections.length,
+              itemBuilder: (context, index) {
+                var wordCollection = allWordCollections[index];
+                return WordCollectionCard(
+                  wordCollection: wordCollection,
+                  isSelectedInitially:
+                      selectedWordCollectionIds.contains(wordCollection.id),
+                  onTap: (WordCollection collection) {},
+                  isDismissible: false,
+                  inMultiSelectMode: ValueNotifier<bool>(true),
+                  onSelected: (WordCollection collection) {
+                    setState(() {
+                      selectedWordCollectionIds.add(collection.id);
+                    });
+                  },
+                  onDeselected: (WordCollection collection) {
+                    setState(() {
+                      selectedWordCollectionIds.remove(collection.id);
+                    });
+                  },
+                  selectAllNotifier: SelectAllNotifier(),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildEntryCreationPage() {
     return DictionaryDefinitionCreator(
       existingDefinitions: definitions,
       onDefinitionsChanged: (defs) {
@@ -215,6 +276,10 @@ class _WordCollectionEntryCreatorState
           !wordOrPhraseExistsInDictionary;
     }
 
+    if (pageNum == 2 && widget.allowWordCollectionSelection) {
+      return selectedWordCollectionIds.isNotEmpty;
+    }
+
     return definitions.isNotEmpty &&
         definitions.values.every(
             (e) => e.isNotEmpty && e.every((e2) => e2.trim().isNotEmpty));
@@ -246,6 +311,21 @@ class _WordCollectionEntryCreatorState
       return [
         _buildCancelButton(),
         _buildContinueButton(),
+      ];
+    }
+
+    if (pageNum == 2 && widget.allowWordCollectionSelection) {
+      return [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            _buildBackButton(),
+            const Spacer(),
+            _buildCancelButton(),
+            const SizedBox(width: 20),
+            _buildContinueButton(),
+          ],
+        ),
       ];
     }
 
@@ -302,7 +382,12 @@ class _WordCollectionEntryCreatorState
         widget.db.find<Dictionary>(dictionaryId)!.size++;
 
         // add to word collections
-        for (var wordCollection in widget.wordCollections) {
+        var collections = widget.allowWordCollectionSelection
+            ? widget.db
+                .all<WordCollection>()
+                .where((e) => selectedWordCollectionIds.contains(e.id))
+            : widget.wordCollections;
+        for (var wordCollection in collections) {
           var wordCollectionEntry = WordCollectionEntry(
             wordCollection.id,
             dictionaryId,

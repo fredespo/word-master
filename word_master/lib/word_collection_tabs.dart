@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
 import 'package:realm/realm.dart';
 import 'package:word_master/page_jumper_activation_notifier.dart';
 import 'package:word_master/random_word_fetcher.dart';
@@ -40,7 +39,6 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
   final Map<String, ScrollController> scrollControllers = {};
   final Map<String, ValueNotifier<double>> scrollOffsets = {};
   late TabController _tabController;
-  final NumberFormat _numberFormat = NumberFormat('#,##0');
 
   @override
   void initState() {
@@ -147,6 +145,7 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
           db: widget.db,
           wordCollections: [wordCollection],
           wordCollectionSizeNotifier: sizeNotifiers[wordCollection.id]!,
+          allowWordCollectionSelection: true,
         );
       },
     );

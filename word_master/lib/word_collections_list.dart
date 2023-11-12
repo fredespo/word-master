@@ -59,6 +59,7 @@ class WordCollectionsList extends StatelessWidget {
                   onTap: (evaluation) {
                     onTap(context, evaluation);
                   },
+                  isDismissible: true,
                   onDismissed: (WordCollection wordCollection) {
                     onDismissed(wordCollection);
                   },

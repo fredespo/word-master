@@ -6,27 +6,32 @@ import 'package:word_master/word_collection.dart';
 class WordCollectionCard extends StatefulWidget {
   final WordCollection wordCollection;
   final Function(WordCollection) onTap;
-  final Function(WordCollection) onDismissed;
+  final bool isDismissible;
+  final Function(WordCollection)? onDismissed;
   final double widthFactor;
-  final Future<bool?> Function(DismissDirection, BuildContext, String)
+  final Future<bool?> Function(DismissDirection, BuildContext, String)?
       confirmDismiss;
   final ValueNotifier<bool> inMultiSelectMode;
-  final SelectAllNotifier selectAllNotifier;
+  final SelectAllNotifier? selectAllNotifier;
   final Function(WordCollection) onSelected;
   final Function(WordCollection) onDeselected;
+  final bool isSelectedInitially;
 
   const WordCollectionCard({
     super.key,
     required this.wordCollection,
     required this.onTap,
     this.widthFactor = 1.0,
-    required this.onDismissed,
-    required this.confirmDismiss,
+    this.onDismissed,
+    this.confirmDismiss,
     required this.inMultiSelectMode,
     required this.onSelected,
     required this.onDeselected,
-    required this.selectAllNotifier,
-  });
+    this.selectAllNotifier,
+    required this.isDismissible,
+    this.isSelectedInitially = false,
+  }) : assert(!isDismissible ||
+            (isDismissible && onDismissed != null && confirmDismiss != null));
 
   @override
   State<WordCollectionCard> createState() => _WordCollectionCardState();
@@ -39,7 +44,8 @@ class _WordCollectionCardState extends State<WordCollectionCard> {
   @override
   void initState() {
     super.initState();
-    widget.selectAllNotifier.addListener(_onSelectAll);
+    widget.selectAllNotifier?.addListener(_onSelectAll);
+    _selected = widget.isSelectedInitially;
   }
 
   @override
@@ -47,60 +53,65 @@ class _WordCollectionCardState extends State<WordCollectionCard> {
     if (!widget.inMultiSelectMode.value) {
       _selected = false;
     }
-    return Center(
-      child: Dismissible(
-        key: Key(ObjectKey(widget.wordCollection).toString()),
-        direction: DismissDirection.endToStart,
-        confirmDismiss: (direction) {
-          return widget.confirmDismiss(
-              direction,
-              context,
-              widget.wordCollection.name.isNotEmpty
-                  ? widget.wordCollection.name
-                  : "Untitled Word Collection");
-        },
-        onDismissed: (direction) {
-          widget.onDismissed(widget.wordCollection);
-        },
-        background: Container(
-          color: Colors.red,
-          child: const Align(
-            alignment: Alignment.centerRight,
-            child: Padding(
-              padding: EdgeInsets.only(right: 16),
-              child: Icon(
-                Icons.delete,
-                color: Colors.white,
-              ),
-            ),
+
+    var main = ValueListenableBuilder(
+      valueListenable: widget.inMultiSelectMode,
+      builder: (
+        BuildContext context,
+        bool inMultiSelectModeValue,
+        Widget? child,
+      ) {
+        return GestureDetector(
+          onTap: inMultiSelectModeValue
+              ? () => _toggleIsSelected()
+              : () => widget.onTap(widget.wordCollection),
+          onLongPress: inMultiSelectModeValue
+              ? null
+              : () {
+                  widget.inMultiSelectMode.value = true;
+                  _toggleIsSelected();
+                },
+          child: FractionallySizedBox(
+            widthFactor: widget.widthFactor,
+            child: _buildCard(inMultiSelectModeValue),
           ),
-        ),
-        child: ValueListenableBuilder(
-          valueListenable: widget.inMultiSelectMode,
-          builder: (
-            BuildContext context,
-            bool inMultiSelectModeValue,
-            Widget? child,
-          ) {
-            return GestureDetector(
-              onTap: inMultiSelectModeValue
-                  ? () => _toggleIsSelected()
-                  : () => widget.onTap(widget.wordCollection),
-              onLongPress: inMultiSelectModeValue
-                  ? null
-                  : () {
-                      widget.inMultiSelectMode.value = true;
-                      _toggleIsSelected();
-                    },
-              child: FractionallySizedBox(
-                widthFactor: widget.widthFactor,
-                child: _buildCard(inMultiSelectModeValue),
-              ),
-            );
-          },
-        ),
-      ),
+        );
+      },
     );
+
+    return widget.isDismissible
+        ? Center(
+            child: Dismissible(
+              key: Key(ObjectKey(widget.wordCollection).toString()),
+              direction: DismissDirection.endToStart,
+              confirmDismiss: (direction) {
+                return widget.confirmDismiss!(
+                    direction,
+                    context,
+                    widget.wordCollection.name.isNotEmpty
+                        ? widget.wordCollection.name
+                        : "Untitled Word Collection");
+              },
+              onDismissed: (direction) {
+                widget.onDismissed!(widget.wordCollection);
+              },
+              background: Container(
+                color: Colors.red,
+                child: const Align(
+                  alignment: Alignment.centerRight,
+                  child: Padding(
+                    padding: EdgeInsets.only(right: 16),
+                    child: Icon(
+                      Icons.delete,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+              child: main,
+            ),
+          )
+        : Center(child: main);
   }
 
   void _toggleIsSelected() {
@@ -191,7 +202,7 @@ class _WordCollectionCardState extends State<WordCollectionCard> {
 
   @override
   void dispose() {
-    widget.selectAllNotifier.removeListener(_onSelectAll);
+    widget.selectAllNotifier?.removeListener(_onSelectAll);
     super.dispose();
   }
 }

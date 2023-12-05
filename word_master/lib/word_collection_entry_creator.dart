@@ -18,8 +18,9 @@ class WordCollectionEntryCreator extends StatefulWidget {
   final ValueNotifier<int>? wordCollectionSizeNotifier;
   final Function()? onComplete;
   final bool allowWordCollectionSelection;
+  final SelectAllNotifier selectAllNotifier = SelectAllNotifier();
 
-  const WordCollectionEntryCreator({
+  WordCollectionEntryCreator({
     super.key,
     required this.db,
     required this.wordCollections,
@@ -135,6 +136,7 @@ class _WordCollectionEntryCreatorState
               textAlign: TextAlign.center,
             ),
           ),
+          _buildSelectAllButton(allWordCollections),
           Expanded(
             child: ListView.builder(
               itemCount: allWordCollections.length,
@@ -157,7 +159,7 @@ class _WordCollectionEntryCreatorState
                       selectedWordCollectionIds.remove(collection.id);
                     });
                   },
-                  selectAllNotifier: SelectAllNotifier(),
+                  selectAllNotifier: widget.selectAllNotifier,
                 );
               },
             ),
@@ -264,6 +266,31 @@ class _WordCollectionEntryCreatorState
             }
           : null,
       child: const Text('Continue'),
+    );
+  }
+
+  Widget _buildSelectAllButton(
+      RealmResults<WordCollection> allWordCollections) {
+    return Padding(
+      padding: const EdgeInsets.all(15),
+      child: ElevatedButton(
+        onPressed: () {
+          widget.selectAllNotifier.triggerSelectAll();
+          setState(() {
+            selectedWordCollectionIds.clear();
+            for (WordCollection w in allWordCollections) {
+              selectedWordCollectionIds.add(w.id);
+            }
+          });
+        },
+        child: const Text(
+          "Select All",
+          style: TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
     );
   }
 

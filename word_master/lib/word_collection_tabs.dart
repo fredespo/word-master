@@ -8,6 +8,7 @@ import 'package:word_master/word_collection_adder.dart';
 import 'package:word_master/word_collection_creator.dart';
 import 'package:word_master/word_collection_entry.dart';
 import 'package:word_master/word_collection_entry_creator.dart';
+import 'package:word_master/word_collection_manager.dart';
 import 'package:word_master/word_collection_selection_dialog.dart';
 import 'package:word_master/word_collection_widget.dart';
 
@@ -182,7 +183,13 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
             icon: const Icon(Icons.close),
             onPressed: () => Navigator.of(context).pop(),
           ),
-          title: const Text('Word Collections'),
+          title: Row(
+            children: [
+              const Text('Collections'),
+              const SizedBox(width: 20),
+              _buildViewAllButton(),
+            ],
+          ),
           bottom: TabBar(
             isScrollable: true,
             controller: _tabController,
@@ -320,5 +327,46 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
         Navigator.of(context).pop();
       }
     });
+  }
+
+  _buildViewAllButton() {
+    return TextButton(
+      onPressed: () {
+        // push a new route to show all word collections
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) {
+              return WordCollectionManager(
+                db: widget.db,
+                title: 'All Word Collections',
+                onTapWordCollection: (context, wordCollection) {
+                  Navigator.pop(context);
+                  // only add if not already added
+                  if (!wordCollections.any((c) => c.id == wordCollection.id)) {
+                    addWordCollection(wordCollection);
+                  }
+
+                  // otherwise show the tab
+                  _tabController.animateTo(
+                    wordCollections.indexOf(wordCollection),
+                  );
+                },
+              );
+            },
+          ),
+        );
+      },
+      style: TextButton.styleFrom(
+        foregroundColor: Colors.blue,
+        backgroundColor: Colors.white,
+      ),
+      child: const Text(
+        "All",
+        style: TextStyle(
+          fontSize: 13,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
+    );
   }
 }

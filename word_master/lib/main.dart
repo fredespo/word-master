@@ -1,20 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/scheduler.dart';
 import 'package:realm/realm.dart';
 import 'package:word_master/dictionary.dart';
-import 'package:word_master/dictionary_data_manager.dart';
 import 'package:word_master/random_word_fetcher.dart';
-import 'package:word_master/select_all_notifier.dart';
 import 'package:word_master/word_collection_creator.dart';
-import 'package:word_master/word_collection_data.dart';
 import 'package:word_master/word_collection_entry.dart';
-import 'package:word_master/word_collection_entry_creator.dart';
-import 'package:word_master/word_collection_migration_dialog.dart';
-import 'package:word_master/word_collection_tabs.dart';
-import 'package:word_master/word_collections_list.dart';
+import 'package:word_master/word_collection_manager.dart';
 import 'package:word_master/word_collection.dart';
+import 'package:word_master/word_collection_tabs.dart';
 
-import 'data_migration_widget.dart';
 import 'database.dart';
 import 'dictionary_entry.dart';
 import 'imported_dictionary.dart';
@@ -33,11 +26,7 @@ class MainApp extends StatefulWidget {
 
 class _MainAppState extends State<MainApp> {
   final Realm db = Database.getDbConnection();
-  bool isMigrating = false;
   String migrationError = '';
-  ValueNotifier<bool> inMultiSelectMode = ValueNotifier(false);
-  List<WordCollection> selectedCollections = [];
-  SelectAllNotifier selectAllNotifier = SelectAllNotifier();
 
   @override
   void initState() {
@@ -79,233 +68,23 @@ class _MainAppState extends State<MainApp> {
     if (migrationError.isNotEmpty) {
       return _migrationError();
     }
-    var allCollections = db.all<WordCollection>();
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        backgroundColor: Colors.grey.shade200,
-        appBar: AppBar(
-          title: ValueListenableBuilder(
-            valueListenable: inMultiSelectMode,
-            builder:
-                (BuildContext context, inMultiSelectModeValue, Widget? child) {
-              return inMultiSelectModeValue
-                  ? Row(
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(0, 3, 10, 0),
-                          child: IconButton(
-                            onPressed: () {
-                              setState(() {
-                                selectedCollections.clear();
-                                inMultiSelectMode.value = false;
-                              });
-                            },
-                            icon: const Icon(Icons.clear_rounded),
-                          ),
-                        ),
-                        Text("${selectedCollections.length} selected"),
-                        if (selectedCollections.length < allCollections.length)
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(15, 3, 10, 0),
-                            child: TextButton(
-                              onPressed: () {
-                                selectAllNotifier.triggerSelectAll();
-                                setState(() {
-                                  selectedCollections.clear();
-                                  selectedCollections.addAll(allCollections);
-                                });
-                              },
-                              style: TextButton.styleFrom(
-                                foregroundColor: Colors.blue,
-                                backgroundColor: Colors.white,
-                              ),
-                              child: const Text(
-                                "Select All",
-                                style: TextStyle(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          ),
-                      ],
-                    )
-                  : const Text('Word Master');
-            },
-          ),
-          actions: isMigrating
-              ? []
-              : <Widget>[
-                  Builder(
-                    builder: (context) => PopupMenuButton(
-                      onSelected: (value) async {
-                        if (value == 'dictionary_data') {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) =>
-                                  DictionaryDataManager(db: db),
-                            ),
-                          );
-                        }
-
-                        if (value == 'create_entry_in_selected_collections') {
-                          await showDialog(
-                            barrierDismissible: false,
-                            context: context,
-                            builder: (context) {
-                              return WordCollectionEntryCreator(
-                                db: db,
-                                wordCollections: selectedCollections,
-                                onComplete: () => setState(() {
-                                  selectedCollections.clear();
-                                  inMultiSelectMode.value = false;
-                                }),
-                              );
-                            },
-                          );
-                        }
-                      },
-                      itemBuilder: (BuildContext context) {
-                        return selectedCollections.isEmpty
-                            ? [
-                                const PopupMenuItem(
-                                  value: 'dictionary_data',
-                                  child: Text('Dictionaries'),
-                                ),
-                              ]
-                            : [
-                                const PopupMenuItem(
-                                  value: 'create_entry_in_selected_collections',
-                                  child: Text('Create Entry'),
-                                ),
-                              ];
-                      },
-                    ),
-                  ),
-                ],
-        ),
-        body: isMigrating
-            ? DataMigrationWidget(
-                onDone: () {
-                  SchedulerBinding.instance.addPostFrameCallback((_) {
-                    setState(() {
-                      isMigrating = false;
-                    });
-                  });
-                },
+      home: WordCollectionManager(
+        db: db,
+        title: 'Word Master',
+        onTapWordCollection:
+            (BuildContext context, WordCollection wordCollection) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => WordCollectionTabs(
                 db: db,
-                onError: (String errorMessage) {
-                  SchedulerBinding.instance.addPostFrameCallback((_) {
-                    setState(() {
-                      isMigrating = false;
-                      migrationError = errorMessage;
-                    });
-                  });
-                },
-              )
-            : WordCollectionsList(
-                wordCollections: allCollections,
-                onTap: (context, wordCollection) {
-                  _openWordCollection(context, wordCollection);
-                },
-                onDismissed: (WordCollection wordCollection) {
-                  var entries = db
-                      .all<WordCollectionEntry>()
-                      .query("wordCollectionId == '${wordCollection.id}'");
-                  db.write(() {
-                    db.delete(wordCollection);
-                    for (var entry in entries) {
-                      db.delete(entry);
-                    }
-                  });
-                },
-                oldWordCollections: db.all<WordCollectionData>(),
-                onOldDismissed: (WordCollectionData oldWordCollection) {
-                  db.write(() {
-                    db.delete(oldWordCollection);
-                  });
-                },
-                onOldTap: (BuildContext context,
-                    WordCollectionData oldWordCollection) {
-                  showDialog(
-                    barrierDismissible: false,
-                    context: context,
-                    builder: (context) => WordCollectionMigrationDialog(
-                      db: db,
-                      oldWordCollection: oldWordCollection,
-                      onMigrated: (WordCollection wordCollection) {
-                        Navigator.of(context).pop();
-                        SchedulerBinding.instance.addPostFrameCallback((_) {
-                          _openWordCollection(context, wordCollection);
-                        });
-                      },
-                      onError: (String errorMsg) {
-                        Navigator.of(context).pop();
-                        SchedulerBinding.instance.addPostFrameCallback((_) {
-                          showDialog(
-                              barrierDismissible: false,
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                    title: const Text('Migration Error'),
-                                    content: Text(errorMsg),
-                                    actions: [
-                                      TextButton(
-                                          onPressed: () {
-                                            Navigator.of(context).pop();
-                                          },
-                                          child: const Text('OK'))
-                                    ],
-                                  ));
-                        });
-                      },
-                    ),
-                  );
-                },
-                inMultiSelectMode: inMultiSelectMode,
-                onSelected: (WordCollection wordCollection) {
-                  setState(() {
-                    selectedCollections.add(wordCollection);
-                  });
-                },
-                onDeselected: (WordCollection wordCollection) {
-                  setState(() {
-                    selectedCollections.remove(wordCollection);
-                    if (selectedCollections.isEmpty) {
-                      inMultiSelectMode.value = false;
-                    }
-                  });
-                },
-                selectAllNotifier: selectAllNotifier,
+                initialWordCollections: [wordCollection],
               ),
-        floatingActionButton: isMigrating
-            ? null
-            : Padding(
-                padding: const EdgeInsets.fromLTRB(0, 0, 30, 30),
-                child: Builder(builder: (context) {
-                  return CreateWordTableButton(
-                      db: db,
-                      onNewWordCollection: (wordCollection) {
-                        _openWordCollection(context, wordCollection);
-                      });
-                }),
-              ),
-      ),
-    );
-  }
-
-  void _openWordCollection(
-    BuildContext context,
-    WordCollection wordCollection,
-  ) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => WordCollectionTabs(
-          db: db,
-          initialWordCollections: [wordCollection],
-        ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -331,7 +110,6 @@ class _MainAppState extends State<MainApp> {
               ElevatedButton(
                 onPressed: () {
                   setState(() {
-                    isMigrating = false;
                     migrationError = '';
                   });
                 },

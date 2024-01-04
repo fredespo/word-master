@@ -4,6 +4,7 @@ part 'word_collection_entry.g.dart';
 
 @RealmModel()
 class _WordCollectionEntry {
+  late int id;
   late String wordCollectionId;
   late String dictionaryId;
   late String wordOrPhrase;

@@ -9,11 +9,13 @@ part of 'word_collection_entry.dart';
 class WordCollectionEntry extends _WordCollectionEntry
     with RealmEntity, RealmObjectBase, RealmObject {
   WordCollectionEntry(
+    int id,
     String wordCollectionId,
     String dictionaryId,
     String wordOrPhrase,
     bool isFavorite,
   ) {
+    RealmObjectBase.set(this, 'id', id);
     RealmObjectBase.set(this, 'wordCollectionId', wordCollectionId);
     RealmObjectBase.set(this, 'dictionaryId', dictionaryId);
     RealmObjectBase.set(this, 'wordOrPhrase', wordOrPhrase);
@@ -21,6 +23,11 @@ class WordCollectionEntry extends _WordCollectionEntry
   }
 
   WordCollectionEntry._();
+
+  @override
+  int get id => RealmObjectBase.get<int>(this, 'id') as int;
+  @override
+  set id(int value) => RealmObjectBase.set(this, 'id', value);
 
   @override
   String get wordCollectionId =>
@@ -62,6 +69,7 @@ class WordCollectionEntry extends _WordCollectionEntry
     RealmObjectBase.registerFactory(WordCollectionEntry._);
     return const SchemaObject(
         ObjectType.realmObject, WordCollectionEntry, 'WordCollectionEntry', [
+      SchemaProperty('id', RealmPropertyType.int),
       SchemaProperty('wordCollectionId', RealmPropertyType.string),
       SchemaProperty('dictionaryId', RealmPropertyType.string),
       SchemaProperty('wordOrPhrase', RealmPropertyType.string),

@@ -416,6 +416,7 @@ class _WordCollectionEntryCreatorState
             : widget.wordCollections;
         for (var wordCollection in collections) {
           var wordCollectionEntry = WordCollectionEntry(
+            wordCollection.size + 1,
             wordCollection.id,
             dictionaryId,
             wordOrPhrase!,

@@ -19,7 +19,8 @@ class WordCollectionWidget extends StatefulWidget {
   final ValueNotifier<int> sizeNotifier;
   final ValueNotifier<int> pageHeight = ValueNotifier<int>(1);
   final ValueNotifier<int> totalPages;
-  final ScrollController scrollController;
+  final ValueNotifier<ScrollController> scrollController =
+      ValueNotifier(ScrollController());
   final ValueNotifier<double> pagesViewportHeight = ValueNotifier<double>(1000);
   final ValueNotifier<int> pageNumNotifier;
   final PageJumperActivationNotifier pageJumperActivationNotifier;
@@ -35,7 +36,6 @@ class WordCollectionWidget extends StatefulWidget {
     required this.viewingFavesNotifier,
     required this.pageJumperActivationNotifier,
     required this.pageNumNotifier,
-    required this.scrollController,
     required this.scrollOffsetNotifier,
   }) : totalPages =
             ValueNotifier<int>((entries.length / numWordsPerPage).ceil());
@@ -53,9 +53,9 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
 
   @override
   void initState() {
-    widget.scrollController.addListener(_onScroll);
+    widget.scrollController.value.addListener(_onScroll);
     SchedulerBinding.instance.addPostFrameCallback((_) {
-      widget.scrollController.jumpTo(widget.scrollOffsetNotifier.value);
+      widget.scrollController.value.jumpTo(widget.scrollOffsetNotifier.value);
     });
     widget.viewingFavesNotifier.addListener(_onViewingFavesChange);
     _viewingFaves = widget.viewingFavesNotifier.value;
@@ -80,11 +80,11 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
       _viewingFaves = widget.viewingFavesNotifier.value;
       if (_viewingFaves) {
         SchedulerBinding.instance.addPostFrameCallback((_) {
-          widget.scrollController.jumpTo(favoritesOnlyScrollOffset);
+          widget.scrollController.value.jumpTo(favoritesOnlyScrollOffset);
         });
       } else {
         SchedulerBinding.instance.addPostFrameCallback((_) {
-          widget.scrollController.jumpTo(normalScrollOffset);
+          widget.scrollController.value.jumpTo(normalScrollOffset);
         });
       }
     });
@@ -113,7 +113,7 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
           parentHeight: widget.pagesViewportHeight,
           pageNumNotifier: widget.pageNumNotifier,
           activationNotifier: widget.pageJumperActivationNotifier,
-          scrollController: widget.scrollController,
+          scrollController: widget.scrollController.value,
         ),
       ],
     );
@@ -128,16 +128,23 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
   }
 
   Widget _buildPageList() {
+    final sortedEntries = widget.entries.query("TRUEPREDICATE SORT(id ASC)");
     final entries = _viewingFaves
-        ? widget.entries.query("isFavorite == true").toList()
-        : widget.entries.toList();
+        ? sortedEntries.query("isFavorite == true").toList()
+        : sortedEntries.toList();
     var pageCount =
         (entries.length / WordCollectionWidget.numWordsPerPage).ceil();
     SchedulerBinding.instance.addPostFrameCallback((_) {
       widget.totalPages.value = pageCount;
     });
+
+    if (widget.scrollController.value.hasClients) {
+      widget.scrollController.value.dispose();
+    }
+    widget.scrollController.value = ScrollController();
+
     return ListView.builder(
-      controller: widget.scrollController,
+      controller: widget.scrollController.value,
       itemCount: pageCount,
       itemBuilder: (context, index) {
         return _buildPage(index, entries);
@@ -187,17 +194,17 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
   }
 
   void _jumpToPage(int pageNum) {
-    widget.scrollController.jumpTo(
+    widget.scrollController.value.jumpTo(
       ((pageNum - 1) * widget.pageHeight.value.toDouble()) + 10,
     );
   }
 
   void _onScroll() {
     if (_viewingFaves) {
-      favoritesOnlyScrollOffset = widget.scrollController.offset;
+      favoritesOnlyScrollOffset = widget.scrollController.value.offset;
     } else {
-      normalScrollOffset = widget.scrollController.offset;
+      normalScrollOffset = widget.scrollController.value.offset;
     }
-    widget.scrollOffsetNotifier.value = widget.scrollController.offset;
+    widget.scrollOffsetNotifier.value = widget.scrollController.value.offset;
   }
 }

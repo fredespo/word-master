@@ -255,6 +255,7 @@ class _DataMigrationWidgetState extends State<DataMigrationWidget> {
       widget.db.write(() {
         try {
           widget.db.add(WordCollectionEntry(
+            i + 1,
             newCollection.id,
             oldCollection.dictionaryId,
             words[i],

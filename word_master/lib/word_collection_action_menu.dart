@@ -15,6 +15,8 @@ class WordCollectionActionMenu extends StatelessWidget {
   static const actionValueOpenInNewTab = 6;
   final Function() onCloseCurrentTab;
   static const actionValueCloseCurrentTab = 7;
+  final Function() onShuffle;
+  static const actionValueShuffle = 8;
 
   const WordCollectionActionMenu({
     super.key,
@@ -25,6 +27,7 @@ class WordCollectionActionMenu extends StatelessWidget {
     required this.onJumpToPage,
     required this.onOpenInNewTab,
     required this.onCloseCurrentTab,
+    required this.onShuffle,
   });
 
   @override
@@ -60,6 +63,10 @@ class WordCollectionActionMenu extends StatelessWidget {
             value: actionValueCloseCurrentTab,
             child: Text('Close current tab'),
           ),
+          const PopupMenuItem(
+            value: actionValueShuffle,
+            child: Text('Shuffle'),
+          ),
         ];
       },
       onSelected: _handleMenuSelection,
@@ -94,6 +101,10 @@ class WordCollectionActionMenu extends StatelessWidget {
 
       case actionValueCloseCurrentTab:
         onCloseCurrentTab();
+        break;
+
+      case actionValueShuffle:
+        onShuffle();
         break;
     }
   }

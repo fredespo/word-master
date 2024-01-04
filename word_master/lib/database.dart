@@ -18,7 +18,7 @@ class Database {
         WordCollectionEntry.schema,
         WordCollection.schema,
       ],
-      schemaVersion: 7,
+      schemaVersion: 8,
     ));
   }
 }

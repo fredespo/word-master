@@ -5,7 +5,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:intl/intl.dart';
 
 class WordCollectionPageIndicator extends StatefulWidget {
-  final ScrollController scrollController;
+  final ValueNotifier<ScrollController> scrollController;
   final ValueNotifier<int> pageHeight;
   final ValueNotifier<int> totalPages;
   final ValueNotifier<int> pageNumNotifier;
@@ -29,11 +29,14 @@ class _WordCollectionPageIndicatorState
   bool scrolledRecently = false;
   Timer? fadeTimer;
   int pageNum = 1;
+  late ScrollController scrollController;
 
   @override
   void initState() {
     super.initState();
-    widget.scrollController.addListener(onScroll);
+    scrollController = widget.scrollController.value;
+    widget.scrollController.value.addListener(onScroll);
+    widget.scrollController.addListener(onScrollControllerChange);
   }
 
   void onScroll() {
@@ -105,7 +108,7 @@ class _WordCollectionPageIndicatorState
 
   int _calcPageNum() {
     int pageHeight = widget.pageHeight.value;
-    int scrollOffset = widget.scrollController.offset.toInt();
+    int scrollOffset = scrollController.offset.toInt();
     int pageNum = (scrollOffset / pageHeight).ceil();
     if (pageNum < 1) {
       pageNum = 1;
@@ -116,7 +119,15 @@ class _WordCollectionPageIndicatorState
   @override
   void dispose() {
     fadeTimer?.cancel();
-    widget.scrollController.removeListener(onScroll);
+    scrollController.removeListener(onScroll);
     super.dispose();
+  }
+
+  void onScrollControllerChange() {
+    setState(() {
+      scrollController.removeListener(onScroll);
+      scrollController = widget.scrollController.value;
+      widget.scrollController.value.addListener(onScroll);
+    });
   }
 }

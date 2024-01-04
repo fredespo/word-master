@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:realm/realm.dart';
 import 'package:word_master/page_jumper_activation_notifier.dart';
@@ -10,6 +12,8 @@ import 'package:word_master/word_collection_entry.dart';
 import 'package:word_master/word_collection_entry_creator.dart';
 import 'package:word_master/word_collection_manager.dart';
 import 'package:word_master/word_collection_selection_dialog.dart';
+import 'package:word_master/word_collection_shuffle_dialog.dart';
+import 'package:word_master/word_collection_shuffler.dart';
 import 'package:word_master/word_collection_widget.dart';
 
 import 'dictionary.dart';
@@ -37,7 +41,6 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
   final Map<String, PageJumperActivationNotifier>
       pageJumperActivationNotifiers = {};
   final Map<String, ValueNotifier<int>> pageNumNotifiers = {};
-  final Map<String, ScrollController> scrollControllers = {};
   final Map<String, ValueNotifier<double>> scrollOffsets = {};
   late TabController _tabController;
 
@@ -61,13 +64,21 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
         .all<WordCollectionEntry>()
         .query("wordCollectionId == '${wordCollection.id}'");
 
+    if (entries.isNotEmpty && entries.first.id == 0) {
+      widget.db.write(() {
+        int id = 1;
+        for (var entry in entries) {
+          entry.id = id++;
+        }
+      });
+    }
+
     setState(() {
       viewingFavesNotifiers[wordCollection.id] = ValueNotifier<bool>(false);
       sizeNotifiers[wordCollection.id] = ValueNotifier<int>(entries.length);
       pageJumperActivationNotifiers[wordCollection.id] =
           PageJumperActivationNotifier();
       pageNumNotifiers[wordCollection.id] = ValueNotifier<int>(1);
-      scrollControllers[wordCollection.id] = ScrollController();
       scrollOffsets[wordCollection.id] = ValueNotifier<double>(0);
       wordCollections.add(wordCollection);
       wordCollectionWidgets.add(
@@ -80,7 +91,6 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
           pageJumperActivationNotifier:
               pageJumperActivationNotifiers[wordCollection.id]!,
           pageNumNotifier: pageNumNotifiers[wordCollection.id]!,
-          scrollController: scrollControllers[wordCollection.id]!,
           scrollOffsetNotifier: scrollOffsets[wordCollection.id]!,
         ),
       );
@@ -114,8 +124,6 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
     var wordCollection = getCurrentWordCollection();
     var wordCollectionSizeNotifier = sizeNotifiers[wordCollection.id]!;
     db.write(() {
-      wordCollection.size +=
-          numEntriesPerDictionaryId.values.reduce((a, b) => a + b);
       wordCollectionSizeNotifier.value = wordCollection.size;
       for (var dictionaryId in numEntriesPerDictionaryId.keys) {
         var numEntries = numEntriesPerDictionaryId[dictionaryId]!;
@@ -126,6 +134,7 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
         );
         for (var word in words) {
           db.add(WordCollectionEntry(
+            wordCollection.size++,
             wordCollection.id,
             dictionaryId,
             word,
@@ -209,6 +218,7 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
               onViewFaves: handleViewOnlyFavoritesAction,
               onOpenInNewTab: handleOpenInNewTabAction,
               onCloseCurrentTab: handleCloseCurrentTabAction,
+              onShuffle: handleShuffleAction,
             ),
           ],
         ),
@@ -274,9 +284,11 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
         dictionaryId,
         numEntries,
       );
+      int id = 1;
       widget.db.write(() {
         for (var word in words) {
           widget.db.add(WordCollectionEntry(
+            id++,
             wordCollection.id,
             dictionaryId,
             word,
@@ -300,7 +312,6 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
     var pageJumperActivationNotifier =
         pageJumperActivationNotifiers[wordCollectionId]!;
     var pageNumNotifier = pageNumNotifiers[wordCollectionId]!;
-    var scrollController = scrollControllers[wordCollectionId]!;
     var scrollOffsetNotifier = scrollOffsets[wordCollectionId]!;
     setState(() {
       wordCollections.removeAt(wordCollectionIndex);
@@ -309,13 +320,11 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
       sizeNotifiers.remove(wordCollectionId);
       pageJumperActivationNotifiers.remove(wordCollectionId);
       pageNumNotifiers.remove(wordCollectionId);
-      scrollControllers.remove(wordCollectionId);
       scrollOffsets.remove(wordCollectionId);
       wordCollectionSizeNotifier.dispose();
       viewingFavesNotifier.dispose();
       pageJumperActivationNotifier.dispose();
       pageNumNotifier.dispose();
-      scrollController.dispose();
       scrollOffsetNotifier.dispose();
       _tabController.dispose();
       _tabController = TabController(
@@ -368,5 +377,20 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
         ),
       ),
     );
+  }
+
+  void handleShuffleAction() async {
+    ValueNotifier<double> progress = new ValueNotifier<double>(0);
+    var wordCollection = getCurrentWordCollection();
+    showDialog(
+        context: context,
+        builder: (context) => WordCollectionShuffleDialog(
+            wordCollection: wordCollection, progress: progress));
+    await WordCollectionShuffler.shuffle(wordCollection, progress, widget.db);
+
+    sizeNotifiers[wordCollection.id]!.value = wordCollection.size - 1;
+    sizeNotifiers[wordCollection.id]!.value = wordCollection.size;
+
+    Navigator.pop(context); // Close the progress dialog
   }
 }

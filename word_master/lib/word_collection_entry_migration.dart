@@ -21,6 +21,7 @@ class WordCollectionEntryMigration {
     db.write(() {
       for (var word in migration.words) {
         var entry = WordCollectionEntry(
+          0,
           migration.id,
           migration.dictionaryId,
           word,

@@ -170,9 +170,11 @@ class CreateWordTableButton extends StatelessWidget {
         dictionaryId,
         numEntries,
       );
+      int id = 1;
       db.write(() {
         for (var word in words) {
           db.add(WordCollectionEntry(
+            id++,
             wordCollection.id,
             dictionaryId,
             word,

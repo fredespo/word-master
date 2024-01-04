@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:realm/realm.dart';
@@ -415,8 +416,16 @@ class _WordCollectionEntryCreatorState
                 .where((e) => selectedWordCollectionIds.contains(e.id))
             : widget.wordCollections;
         for (var wordCollection in collections) {
+          int randomId = Random().nextInt(wordCollection.size) + 1;
+          var existingEntries = widget.db
+              .all<WordCollectionEntry>()
+              .query("wordCollectionId == '${wordCollection.id}'")
+              .query("id >= \$0", [randomId]).toList();
+          for (var entry in existingEntries) {
+            entry.id++;
+          }
           var wordCollectionEntry = WordCollectionEntry(
-            wordCollection.size + 1,
+            randomId,
             wordCollection.id,
             dictionaryId,
             wordOrPhrase!,

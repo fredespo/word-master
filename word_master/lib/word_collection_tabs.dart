@@ -14,6 +14,7 @@ import 'package:word_master/word_collection_manager.dart';
 import 'package:word_master/word_collection_selection_dialog.dart';
 import 'package:word_master/word_collection_shuffle_dialog.dart';
 import 'package:word_master/word_collection_shuffler.dart';
+import 'package:word_master/word_collection_tabs_title.dart';
 import 'package:word_master/word_collection_widget.dart';
 
 import 'dictionary.dart';
@@ -42,11 +43,15 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
       pageJumperActivationNotifiers = {};
   final Map<String, ValueNotifier<int>> pageNumNotifiers = {};
   final Map<String, ValueNotifier<double>> scrollOffsets = {};
+  final Map<String, ValueNotifier<int>> selectedCounts = {};
   late TabController _tabController;
+  ValueNotifier<int> selectedCount = ValueNotifier<int>(0);
+  final Map<String, Set<int>> selectedEntryIds = {};
 
   @override
   void initState() {
     _tabController = TabController(length: 0, vsync: this);
+    _tabController.addListener(_handleTabChange);
     for (var wordCollection in widget.initialWordCollections) {
       addWordCollection(wordCollection);
     }
@@ -55,6 +60,7 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
 
   @override
   void dispose() {
+    _tabController.removeListener(_handleTabChange);
     _tabController.dispose();
     super.dispose();
   }
@@ -80,6 +86,11 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
           PageJumperActivationNotifier();
       pageNumNotifiers[wordCollection.id] = ValueNotifier<int>(1);
       scrollOffsets[wordCollection.id] = ValueNotifier<double>(0);
+      selectedCounts[wordCollection.id] = ValueNotifier<int>(0);
+      selectedCounts[wordCollection.id]!.addListener(() {
+        selectedCount.value = selectedCounts[wordCollection.id]!.value;
+      });
+      selectedEntryIds[wordCollection.id] = {};
       wordCollections.add(wordCollection);
       wordCollectionWidgets.add(
         WordCollectionWidget(
@@ -92,6 +103,8 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
               pageJumperActivationNotifiers[wordCollection.id]!,
           pageNumNotifier: pageNumNotifiers[wordCollection.id]!,
           scrollOffsetNotifier: scrollOffsets[wordCollection.id]!,
+          selectedCount: selectedCounts[wordCollection.id]!,
+          selected: selectedEntryIds[wordCollection.id]!,
         ),
       );
       _tabController.dispose();
@@ -100,6 +113,7 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
         vsync: this,
         initialIndex: wordCollections.length - 1,
       );
+      _tabController.addListener(_handleTabChange);
     });
   }
 
@@ -187,41 +201,7 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
     return Scaffold(
       appBar: PreferredSize(
         preferredSize: const Size.fromHeight(80),
-        child: AppBar(
-          leading: IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () => Navigator.of(context).pop(),
-          ),
-          title: Row(
-            children: [
-              const Text('Collections'),
-              const SizedBox(width: 20),
-              _buildViewAllButton(),
-            ],
-          ),
-          bottom: TabBar(
-            isScrollable: true,
-            controller: _tabController,
-            tabs: wordCollectionWidgets
-                .map((e) => Text(
-                      e.name.isNotEmpty ? e.name : 'Untitled',
-                      style: const TextStyle(fontSize: 18),
-                    ))
-                .toList(),
-          ),
-          actions: [
-            WordCollectionActionMenu(
-              onAddEntries: handleAddRandomEntriesAction,
-              onCreateEntry: handleCreateEntryAction,
-              onJumpToPage: handleJumpToPageAction,
-              onViewAll: handleViewAllAction,
-              onViewFaves: handleViewOnlyFavoritesAction,
-              onOpenInNewTab: handleOpenInNewTabAction,
-              onCloseCurrentTab: handleCloseCurrentTabAction,
-              onShuffle: handleShuffleAction,
-            ),
-          ],
-        ),
+        child: _buildAppBar(),
       ),
       body: TabBarView(
         key: UniqueKey(),
@@ -229,6 +209,96 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
         children: wordCollectionWidgets,
       ),
     );
+  }
+
+  Widget _buildAppBar() {
+    return AppBar(
+      leading: IconButton(
+        icon: const Icon(Icons.close),
+        onPressed: () => selectedCount.value > 0
+            ? deselectAll()
+            : Navigator.of(context).pop(),
+      ),
+      title: WordCollectionTabsTitle(
+        selectedCount: selectedCount,
+        onViewAll: _viewAll,
+      ),
+      bottom: TabBar(
+        isScrollable: true,
+        controller: _tabController,
+        tabs: wordCollectionWidgets
+            .map((e) => Text(
+                  e.name.isNotEmpty ? e.name : 'Untitled',
+                  style: const TextStyle(fontSize: 18),
+                ))
+            .toList(),
+      ),
+      actions: [
+        ValueListenableBuilder(
+          valueListenable: selectedCount,
+          builder: (BuildContext context, int value, Widget? child) {
+            return value == 0
+                ? _buildNormalActionMenu()
+                : _buildSelectedActionMenu(value);
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildNormalActionMenu() {
+    return WordCollectionActionMenu(
+      onAddEntries: handleAddRandomEntriesAction,
+      onCreateEntry: handleCreateEntryAction,
+      onJumpToPage: handleJumpToPageAction,
+      onViewAll: handleViewAllAction,
+      onViewFaves: handleViewOnlyFavoritesAction,
+      onOpenInNewTab: handleOpenInNewTabAction,
+      onCloseCurrentTab: handleCloseCurrentTabAction,
+      onShuffle: handleShuffleAction,
+    );
+  }
+
+  Widget _buildSelectedActionMenu(int numSelected) {
+    if (numSelected < 2) return Container();
+    return IconButton(
+      icon: const Icon(Icons.shuffle),
+      onPressed: () {
+        shuffleSelected();
+        deselectAll();
+      },
+    );
+  }
+
+  void shuffleSelected() {
+    var wordCollection = getCurrentWordCollection();
+    var selectedEntryIds = this.selectedEntryIds[wordCollection.id]!;
+    var entries = [];
+    for (var entry
+        in wordCollectionWidgets[_tabController.index].entries.toList()) {
+      if (selectedEntryIds.contains(entry.id)) {
+        entries.add(entry);
+      }
+    }
+    var entryData = [];
+    for (var entry in entries) {
+      entryData.add([entry.wordOrPhrase, entry.isFavorite]);
+    }
+    entryData.shuffle();
+    var i = 0;
+    widget.db.write(() {
+      for (var entry in entries) {
+        entry.wordOrPhrase = entryData[i][0];
+        entry.isFavorite = entryData[i][1];
+        i++;
+      }
+    });
+  }
+
+  void deselectAll() {
+    selectedCounts[getCurrentWordCollection().id]!.value = 0;
+    selectedEntryIds[getCurrentWordCollection().id]!.clear();
+    selectedCount.value = 0;
   }
 
   void handleOpenInNewTabAction() {
@@ -313,6 +383,7 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
         pageJumperActivationNotifiers[wordCollectionId]!;
     var pageNumNotifier = pageNumNotifiers[wordCollectionId]!;
     var scrollOffsetNotifier = scrollOffsets[wordCollectionId]!;
+    var selectedCount = selectedCounts[wordCollectionId]!;
     setState(() {
       wordCollections.removeAt(wordCollectionIndex);
       wordCollectionWidgets.removeAt(wordCollectionIndex);
@@ -321,6 +392,7 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
       pageJumperActivationNotifiers.remove(wordCollectionId);
       pageNumNotifiers.remove(wordCollectionId);
       scrollOffsets.remove(wordCollectionId);
+      selectedCounts.remove(wordCollectionId);
       wordCollectionSizeNotifier.dispose();
       viewingFavesNotifier.dispose();
       pageJumperActivationNotifier.dispose();
@@ -332,49 +404,35 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
         vsync: this,
         initialIndex: wordCollectionIndex == 0 ? 0 : wordCollectionIndex - 1,
       );
+      selectedCount.dispose();
       if (wordCollections.isEmpty) {
         Navigator.of(context).pop();
       }
     });
   }
 
-  _buildViewAllButton() {
-    return TextButton(
-      onPressed: () {
-        // push a new route to show all word collections
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (context) {
-              return WordCollectionManager(
-                db: widget.db,
-                title: 'All Word Collections',
-                onTapWordCollection: (context, wordCollection) {
-                  Navigator.pop(context);
-                  // only add if not already added
-                  if (!wordCollections.any((c) => c.id == wordCollection.id)) {
-                    addWordCollection(wordCollection);
-                  }
+  void _viewAll() {
+    // push a new route to show all word collections
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (context) {
+          return WordCollectionManager(
+            db: widget.db,
+            title: 'All Word Collections',
+            onTapWordCollection: (context, wordCollection) {
+              Navigator.pop(context);
+              // only add if not already added
+              if (!wordCollections.any((c) => c.id == wordCollection.id)) {
+                addWordCollection(wordCollection);
+              }
 
-                  // otherwise show the tab
-                  _tabController.animateTo(
-                    wordCollections.indexOf(wordCollection),
-                  );
-                },
+              // otherwise show the tab
+              _tabController.animateTo(
+                wordCollections.indexOf(wordCollection),
               );
             },
-          ),
-        );
-      },
-      style: TextButton.styleFrom(
-        foregroundColor: Colors.blue,
-        backgroundColor: Colors.white,
-      ),
-      child: const Text(
-        "All",
-        style: TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.bold,
-        ),
+          );
+        },
       ),
     );
   }
@@ -392,5 +450,9 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
     sizeNotifiers[wordCollection.id]!.value = wordCollection.size;
 
     Navigator.pop(context); // Close the progress dialog
+  }
+
+  void _handleTabChange() {
+    deselectAll();
   }
 }

@@ -13,6 +13,9 @@ class WordCollectionPageCell extends StatefulWidget {
   final Function(String) onUnmarkedFavorite;
   final Realm db;
   final controller = StreamController<RealmObject>();
+  final ValueNotifier<bool> inMultiSelectMode;
+  final ValueNotifier<int> selectedCount;
+  final Set<int> selected;
 
   WordCollectionPageCell({
     super.key,
@@ -22,6 +25,9 @@ class WordCollectionPageCell extends StatefulWidget {
     required this.onUnmarkedFavorite,
     required this.entry,
     required this.db,
+    required this.inMultiSelectMode,
+    required this.selectedCount,
+    required this.selected,
   });
 
   @override
@@ -29,12 +35,15 @@ class WordCollectionPageCell extends StatefulWidget {
 }
 
 class _WordCollectionPageCellState extends State<WordCollectionPageCell> {
+  bool isSelected = false;
+
   @override
   void initState() {
     super.initState();
     if (widget.entry != null) {
       widget.controller.add(widget.entry!);
     }
+    widget.selectedCount.addListener(onSelectedCountChange);
   }
 
   @override
@@ -55,14 +64,22 @@ class _WordCollectionPageCellState extends State<WordCollectionPageCell> {
         height: 50,
         child: InkWell(
           onLongPress: onLongPress,
+          onDoubleTap: onDoubleTap,
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(4.0),
-            child: Stack(
-              children: [
-                Center(child: _buildText()),
-                if (widget.entry?.isFavorite == true) _buildHighlight(),
-              ],
+            child: Container(
+              decoration: BoxDecoration(
+                border: isSelected
+                    ? Border.all(color: Colors.blue, width: 2.5)
+                    : null,
+              ),
+              child: Stack(
+                children: [
+                  Center(child: _buildText()),
+                  if (widget.entry?.isFavorite == true) _buildHighlight(),
+                ],
+              ),
             ),
           ),
         ),
@@ -71,13 +88,46 @@ class _WordCollectionPageCellState extends State<WordCollectionPageCell> {
   }
 
   void onLongPress() {
+    _toggleIsSelected();
+    if (!widget.inMultiSelectMode.value) {
+      widget.inMultiSelectMode.value = true;
+    }
+  }
+
+  void onDoubleTap() {
     if (widget.entry != null) {
       _toggleIsFavorite();
     }
   }
 
+  void _toggleIsSelected() {
+    if (widget.entry == null) {
+      return;
+    }
+    setState(() {
+      isSelected = !isSelected;
+      if (isSelected) {
+        widget.selectedCount.value++;
+        widget.selected.add(widget.entry!.id);
+      } else {
+        widget.selectedCount.value--;
+        widget.selected.remove(widget.entry!.id);
+      }
+    });
+  }
+
+  void onSelectedCountChange() {
+    if (isSelected && widget.selectedCount.value == 0) {
+      setState(() {
+        isSelected = false;
+      });
+    }
+  }
+
   void onTap() {
-    if (widget.entry != null) {
+    if (widget.inMultiSelectMode.value) {
+      _toggleIsSelected();
+    } else if (widget.entry != null) {
       widget.showDefinitions(widget.entry!);
     }
   }
@@ -123,5 +173,12 @@ class _WordCollectionPageCellState extends State<WordCollectionPageCell> {
         widget.entry!.isFavorite = !widget.entry!.isFavorite;
       });
     });
+  }
+
+  @override
+  void dispose() {
+    widget.controller.close();
+    widget.selectedCount.removeListener(onSelectedCountChange);
+    super.dispose();
   }
 }

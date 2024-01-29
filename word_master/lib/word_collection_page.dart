@@ -14,6 +14,9 @@ class WordCollectionPage extends StatefulWidget {
   final Realm db;
   final ValueNotifier<int> pageNumNotifier;
   final ValueNotifier<int> pageHeight;
+  final ValueNotifier<bool> inMultiSelectMode;
+  final ValueNotifier<int> selectedCount;
+  final Set<int> selected;
 
   const WordCollectionPage({
     super.key,
@@ -26,6 +29,9 @@ class WordCollectionPage extends StatefulWidget {
     required this.pageNum,
     required this.pageHeight,
     required this.pageNumNotifier,
+    required this.inMultiSelectMode,
+    required this.selectedCount,
+    required this.selected,
   });
 
   @override
@@ -138,6 +144,9 @@ class _WordCollectionPageState extends State<WordCollectionPage> {
         }
       },
       db: widget.db,
+      inMultiSelectMode: widget.inMultiSelectMode,
+      selectedCount: widget.selectedCount,
+      selected: widget.selected,
     );
   }
 

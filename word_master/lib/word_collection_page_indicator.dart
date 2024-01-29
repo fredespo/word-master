@@ -124,6 +124,9 @@ class _WordCollectionPageIndicatorState
   }
 
   void onScrollControllerChange() {
+    if (!mounted) {
+      return;
+    }
     setState(() {
       scrollController.removeListener(onScroll);
       scrollController = widget.scrollController.value;

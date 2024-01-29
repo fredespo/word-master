@@ -26,6 +26,9 @@ class WordCollectionWidget extends StatefulWidget {
   final PageJumperActivationNotifier pageJumperActivationNotifier;
   final ValueNotifier<bool> viewingFavesNotifier;
   final ValueNotifier<double> scrollOffsetNotifier;
+  final ValueNotifier<bool> inMultiSelectMode = ValueNotifier<bool>(false);
+  final ValueNotifier<int> selectedCount;
+  final Set<int> selected;
 
   WordCollectionWidget({
     super.key,
@@ -37,6 +40,8 @@ class WordCollectionWidget extends StatefulWidget {
     required this.pageJumperActivationNotifier,
     required this.pageNumNotifier,
     required this.scrollOffsetNotifier,
+    required this.selectedCount,
+    required this.selected,
   }) : totalPages =
             ValueNotifier<int>((entries.length / numWordsPerPage).ceil());
 
@@ -60,6 +65,7 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
     widget.viewingFavesNotifier.addListener(_onViewingFavesChange);
     _viewingFaves = widget.viewingFavesNotifier.value;
     widget.sizeNotifier.addListener(_onSizeChange);
+    widget.selectedCount.addListener(_onSelectedCountChange);
     super.initState();
   }
 
@@ -68,6 +74,7 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
     widget.scrollController.removeListener(_onScroll);
     widget.viewingFavesNotifier.removeListener(_onViewingFavesChange);
     widget.sizeNotifier.removeListener(_onSizeChange);
+    widget.selectedCount.removeListener(_onSelectedCountChange);
     super.dispose();
   }
 
@@ -167,6 +174,9 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
       pageNum: index + 1,
       pageHeight: widget.pageHeight,
       pageNumNotifier: widget.pageNumNotifier,
+      inMultiSelectMode: widget.inMultiSelectMode,
+      selectedCount: widget.selectedCount,
+      selected: widget.selected,
     );
     if (index == 0) {
       SchedulerBinding.instance.addPostFrameCallback((_) {
@@ -206,5 +216,11 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
       normalScrollOffset = widget.scrollController.value.offset;
     }
     widget.scrollOffsetNotifier.value = widget.scrollController.value.offset;
+  }
+
+  void _onSelectedCountChange() {
+    if (widget.selectedCount.value == 0) {
+      widget.inMultiSelectMode.value = false;
+    }
   }
 }

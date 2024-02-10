@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
@@ -10,6 +11,7 @@ import 'package:word_master/word_collection_adder.dart';
 import 'package:word_master/word_collection_creator.dart';
 import 'package:word_master/word_collection_entry.dart';
 import 'package:word_master/word_collection_entry_creator.dart';
+import 'package:word_master/word_collection_entry_mover.dart';
 import 'package:word_master/word_collection_manager.dart';
 import 'package:word_master/word_collection_selection_dialog.dart';
 import 'package:word_master/word_collection_shuffle_dialog.dart';
@@ -212,74 +214,152 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
   }
 
   Widget _buildAppBar() {
-    return AppBar(
-      leading: IconButton(
-        icon: const Icon(Icons.close),
-        onPressed: () => selectedCount.value > 0
-            ? deselectAll()
-            : Navigator.of(context).pop(),
-      ),
-      title: WordCollectionTabsTitle(
-        selectedCount: selectedCount,
-        onViewAll: _viewAll,
-      ),
-      bottom: TabBar(
-        isScrollable: true,
-        controller: _tabController,
-        tabs: wordCollectionWidgets
-            .map((e) => Text(
-                  e.name.isNotEmpty ? e.name : 'Untitled',
-                  style: const TextStyle(fontSize: 18),
-                ))
-            .toList(),
-      ),
-      actions: [
-        ValueListenableBuilder(
-          valueListenable: selectedCount,
-          builder: (BuildContext context, int value, Widget? child) {
-            return value == 0
+    return ValueListenableBuilder(
+        valueListenable: selectedCount,
+        builder: (BuildContext context, int value, Widget? child) {
+          return AppBar(
+            leading: IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: () => selectedCount.value > 0
+                  ? deselectAll()
+                  : Navigator.of(context).pop(),
+            ),
+            title: WordCollectionTabsTitle(
+              selectedCount: selectedCount,
+              onViewAll: _viewAll,
+            ),
+            bottom: TabBar(
+              isScrollable: true,
+              controller: _tabController,
+              tabs: wordCollectionWidgets
+                  .map((e) => Text(
+                        e.name.isNotEmpty ? e.name : 'Untitled',
+                        style: const TextStyle(fontSize: 18),
+                      ))
+                  .toList(),
+            ),
+            actions: value == 0
                 ? _buildNormalActionMenu()
-                : _buildSelectedActionMenu(value);
-          },
-        ),
-      ],
-    );
+                : _buildSelectedActionMenu(value),
+          );
+        });
   }
 
-  Widget _buildNormalActionMenu() {
-    return WordCollectionActionMenu(
-      onAddEntries: handleAddRandomEntriesAction,
-      onCreateEntry: handleCreateEntryAction,
-      onJumpToPage: handleJumpToPageAction,
-      onViewAll: handleViewAllAction,
-      onViewFaves: handleViewOnlyFavoritesAction,
-      onOpenInNewTab: handleOpenInNewTabAction,
-      onCloseCurrentTab: handleCloseCurrentTabAction,
-      onShuffle: handleShuffleAction,
-    );
+  List<Widget> _buildNormalActionMenu() {
+    return [
+      WordCollectionActionMenu(
+        onAddEntries: handleAddRandomEntriesAction,
+        onCreateEntry: handleCreateEntryAction,
+        onJumpToPage: handleJumpToPageAction,
+        onViewAll: handleViewAllAction,
+        onViewFaves: handleViewOnlyFavoritesAction,
+        onOpenInNewTab: handleOpenInNewTabAction,
+        onCloseCurrentTab: handleCloseCurrentTabAction,
+        onShuffle: handleShuffleAction,
+      )
+    ];
   }
 
-  Widget _buildSelectedActionMenu(int numSelected) {
-    if (numSelected < 2) return Container();
-    return IconButton(
-      icon: const Icon(Icons.shuffle),
-      onPressed: () {
-        shuffleSelected();
-        deselectAll();
+  List<Widget> _buildSelectedActionMenu(int numSelected) {
+    return [
+      IconButton(
+        icon: const Icon(Icons.shuffle),
+        onPressed: () {
+          shuffleSelected();
+          deselectAll();
+        },
+      ),
+      IconButton(
+        icon: const Icon(Icons.refresh_outlined),
+        onPressed: () async {
+          await reinsertSelected();
+          deselectAll();
+        },
+      )
+    ];
+  }
+
+  Future reinsertSelected() async {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (BuildContext context) {
+        return Dialog(
+          child: Container(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: const [
+                CircularProgressIndicator(),
+                SizedBox(height: 16),
+                Text('Reinserting selected entries...'),
+              ],
+            ),
+          ),
+        );
       },
     );
+    await Future.delayed(const Duration(seconds: 1));
+
+    var mover = WordCollectionEntryMover(
+      widget.db,
+      10000,
+      const Duration(microseconds: 1),
+    );
+    var wordCollection = getCurrentWordCollection();
+    mover.init(wordCollection);
+
+    await Future.delayed(const Duration(seconds: 1));
+
+    var selectedEntryIds = this.selectedEntryIds[wordCollection.id]!;
+    await mover.moveToRandPositions(selectedEntryIds.toList());
+    refreshWordCollection(wordCollection);
+    Navigator.pop(context);
+  }
+
+  Future reinsert(
+    WordCollectionEntry entry,
+    WordCollection wordCollection,
+    List<WordCollectionEntry> existingEntries,
+  ) async {
+    var e = existingEntries.where((e) => e.id > entry.id).toList()
+      ..sort((a, b) => a.id.compareTo(b.id));
+
+    int batchSize = 10;
+    for (int i = 0; i < e.length; i += batchSize) {
+      widget.db.write(() {
+        for (int j = i; j < e.length; j++) {
+          e[j].id--;
+        }
+      });
+      await Future.delayed(const Duration(milliseconds: 10));
+    }
+
+    existingEntries.remove(entry);
+
+    await Future.delayed(const Duration(milliseconds: 100));
+
+    int randomId = Random().nextInt(wordCollection.size - 1) + 1;
+    e = existingEntries.where((e) => e.id >= randomId).toList()
+      ..sort((a, b) => a.id.compareTo(b.id));
+
+    for (int i = 0; i < e.length; i += batchSize) {
+      widget.db.write(() {
+        for (int j = i; j < e.length; j++) {
+          e[j].id++;
+        }
+      });
+      await Future.delayed(Duration(milliseconds: 10));
+    }
+
+    widget.db.write(() {
+      entry.id = randomId;
+      entry.wordCollectionId = wordCollection.id;
+    });
   }
 
   void shuffleSelected() {
-    var wordCollection = getCurrentWordCollection();
-    var selectedEntryIds = this.selectedEntryIds[wordCollection.id]!;
-    var entries = [];
-    for (var entry
-        in wordCollectionWidgets[_tabController.index].entries.toList()) {
-      if (selectedEntryIds.contains(entry.id)) {
-        entries.add(entry);
-      }
-    }
+    var entries = getSelectedEntries();
     var entryData = [];
     for (var entry in entries) {
       entryData.add([entry.wordOrPhrase, entry.isFavorite]);
@@ -295,10 +375,31 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
     });
   }
 
+  List<WordCollectionEntry> getSelectedEntries() {
+    var wordCollection = getCurrentWordCollection();
+    var selectedEntryIds = this.selectedEntryIds[wordCollection.id]!;
+    List<WordCollectionEntry> entries = [];
+    for (var entry
+        in wordCollectionWidgets[_tabController.index].entries.toList()) {
+      if (selectedEntryIds.contains(entry.id)) {
+        entries.add(entry);
+      }
+    }
+    return entries;
+  }
+
   void deselectAll() {
     selectedCounts[getCurrentWordCollection().id]!.value = 0;
     selectedEntryIds[getCurrentWordCollection().id]!.clear();
     selectedCount.value = 0;
+  }
+
+  WordCollectionEntry getEntry(String wordCollectionId, int entryId) {
+    return widget.db
+        .all<WordCollectionEntry>()
+        .query("wordCollectionId == '$wordCollectionId'")
+        .query("id == $entryId")
+        .first;
   }
 
   void handleOpenInNewTabAction() {
@@ -446,10 +547,14 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
             wordCollection: wordCollection, progress: progress));
     await WordCollectionShuffler.shuffle(wordCollection, progress, widget.db);
 
-    sizeNotifiers[wordCollection.id]!.value = wordCollection.size - 1;
-    sizeNotifiers[wordCollection.id]!.value = wordCollection.size;
+    refreshWordCollection(wordCollection);
 
     Navigator.pop(context); // Close the progress dialog
+  }
+
+  void refreshWordCollection(WordCollection wordCollection) {
+    sizeNotifiers[wordCollection.id]!.value = wordCollection.size - 1;
+    sizeNotifiers[wordCollection.id]!.value = wordCollection.size;
   }
 
   void _handleTabChange() {

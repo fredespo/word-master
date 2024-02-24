@@ -108,11 +108,11 @@ class _WordCollectionPageCellState extends State<WordCollectionPageCell> {
     setState(() {
       isSelected = !isSelected;
       if (isSelected) {
-        widget.selectedCount.value++;
         widget.selected.add(widget.entry!.id);
+        widget.selectedCount.value++;
       } else {
-        widget.selectedCount.value--;
         widget.selected.remove(widget.entry!.id);
+        widget.selectedCount.value--;
       }
     });
   }
@@ -121,6 +121,10 @@ class _WordCollectionPageCellState extends State<WordCollectionPageCell> {
     if (isSelected && widget.selectedCount.value == 0) {
       setState(() {
         isSelected = false;
+      });
+    } else if (!isSelected && widget.selected.contains(widget.entry!.id)) {
+      setState(() {
+        isSelected = true;
       });
     }
   }

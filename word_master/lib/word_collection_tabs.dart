@@ -227,6 +227,7 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
             title: WordCollectionTabsTitle(
               selectedCount: selectedCount,
               onViewAll: _viewAll,
+              onSelectAllOnCurrentPage: _onSelectAllOnCurrentPage,
             ),
             bottom: TabBar(
               isScrollable: true,
@@ -559,5 +560,22 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
 
   void _handleTabChange() {
     deselectAll();
+  }
+
+  _onSelectAllOnCurrentPage() {
+    var wordCollection = getCurrentWordCollection();
+    var currPage = pageNumNotifiers[wordCollection.id]!.value;
+    var entriesOnCurrPage = widget.db
+        .all<WordCollectionEntry>()
+        .query("wordCollectionId == '${wordCollection.id}'")
+        .query("id >= \$0", [
+      (currPage - 1) * WordCollectionWidget.numWordsPerPage + 1
+    ]).query("id <= \$0",
+            [currPage * WordCollectionWidget.numWordsPerPage]).toList();
+    for (var entry in entriesOnCurrPage) {
+      selectedEntryIds[wordCollection.id]!.add(entry.id);
+    }
+    selectedCounts[wordCollection.id]!.value =
+        selectedEntryIds[wordCollection.id]!.length;
   }
 }

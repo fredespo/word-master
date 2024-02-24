@@ -43,6 +43,7 @@ class _WordCollectionPageCellState extends State<WordCollectionPageCell> {
     if (widget.entry != null) {
       widget.controller.add(widget.entry!);
     }
+    isSelected = widget.selected.contains(widget.entry?.id);
     widget.selectedCount.addListener(onSelectedCountChange);
   }
 

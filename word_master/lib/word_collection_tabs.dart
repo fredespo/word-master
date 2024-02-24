@@ -390,8 +390,8 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
   }
 
   void deselectAll() {
-    selectedCounts[getCurrentWordCollection().id]!.value = 0;
     selectedEntryIds[getCurrentWordCollection().id]!.clear();
+    selectedCounts[getCurrentWordCollection().id]!.value = 0;
     selectedCount.value = 0;
   }
 

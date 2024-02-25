@@ -4,9 +4,11 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:realm/realm.dart';
 import 'package:word_master/page_jumper_activation_notifier.dart';
+import 'package:word_master/page_selection_dialog.dart';
 import 'package:word_master/random_word_fetcher.dart';
 import 'package:word_master/word_collection.dart';
 import 'package:word_master/word_collection_action_menu.dart';
+import 'package:word_master/word_collection_action_menu_selecting.dart';
 import 'package:word_master/word_collection_adder.dart';
 import 'package:word_master/word_collection_creator.dart';
 import 'package:word_master/word_collection_entry.dart';
@@ -263,19 +265,12 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
 
   List<Widget> _buildSelectedActionMenu(int numSelected) {
     return [
-      IconButton(
-        icon: const Icon(Icons.shuffle),
-        onPressed: () {
-          shuffleSelected();
-          deselectAll();
-        },
-      ),
-      IconButton(
-        icon: const Icon(Icons.refresh_outlined),
-        onPressed: () async {
-          await reinsertSelected();
-          deselectAll();
-        },
+      WordCollectionActionMenuSelecting(
+        selectCurrPage: _onSelectAllOnCurrentPage,
+        selectPages: _selectPages,
+        onShuffle: shuffleSelected,
+        onReinsert: reinsertSelected,
+        deselectAll: deselectAll,
       )
     ];
   }
@@ -565,17 +560,35 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
   _onSelectAllOnCurrentPage() {
     var wordCollection = getCurrentWordCollection();
     var currPage = pageNumNotifiers[wordCollection.id]!.value;
-    var entriesOnCurrPage = widget.db
+    selectPage(wordCollection.id, currPage);
+  }
+
+  void selectPage(String wordCollectionId, int pageNum) {
+    var entries = widget.db
         .all<WordCollectionEntry>()
-        .query("wordCollectionId == '${wordCollection.id}'")
+        .query("wordCollectionId == '$wordCollectionId'")
         .query("id >= \$0", [
-      (currPage - 1) * WordCollectionWidget.numWordsPerPage + 1
+      (pageNum - 1) * WordCollectionWidget.numWordsPerPage + 1
     ]).query("id <= \$0",
-            [currPage * WordCollectionWidget.numWordsPerPage]).toList();
-    for (var entry in entriesOnCurrPage) {
-      selectedEntryIds[wordCollection.id]!.add(entry.id);
+            [pageNum * WordCollectionWidget.numWordsPerPage]).toList();
+    for (var entry in entries) {
+      selectedEntryIds[wordCollectionId]!.add(entry.id);
     }
-    selectedCounts[wordCollection.id]!.value =
-        selectedEntryIds[wordCollection.id]!.length;
+    selectedCounts[wordCollectionId]!.value =
+        selectedEntryIds[wordCollectionId]!.length;
+  }
+
+  Future _selectPages() async {
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return PageSelectionDialog(onConfirmed: (List<int> pages) {
+          var wordCollection = getCurrentWordCollection();
+          for (var page in pages) {
+            selectPage(wordCollection.id, page);
+          }
+        });
+      },
+    );
   }
 }

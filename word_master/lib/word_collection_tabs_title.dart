@@ -29,18 +29,7 @@ class _WordCollectionTabsTitleState extends State<WordCollectionTabsTitle> {
   @override
   Widget build(BuildContext context) {
     return selectedCount > 0
-        ? Row(
-            children: [
-              _buildMultiSelectTitle(selectedCount),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(8, 3, 0, 0),
-                child: IconButton(
-                  icon: const Icon(Icons.document_scanner),
-                  onPressed: widget.onSelectAllOnCurrentPage,
-                ),
-              )
-            ],
-          )
+        ? _buildMultiSelectTitle(selectedCount)
         : _buildNormalTitle();
   }
 

@@ -118,6 +118,10 @@ class _WordCollectionPageCellState extends State<WordCollectionPageCell> {
   }
 
   void onSelectedCountChange() {
+    if (widget.entry == null) {
+      return;
+    }
+
     if (isSelected && widget.selectedCount.value == 0) {
       setState(() {
         isSelected = false;

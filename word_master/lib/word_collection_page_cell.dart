@@ -65,7 +65,6 @@ class _WordCollectionPageCellState extends State<WordCollectionPageCell> {
         height: 50,
         child: InkWell(
           onLongPress: onLongPress,
-          onDoubleTap: onDoubleTap,
           onTap: onTap,
           child: Padding(
             padding: const EdgeInsets.all(4.0),
@@ -92,12 +91,6 @@ class _WordCollectionPageCellState extends State<WordCollectionPageCell> {
     _toggleIsSelected();
     if (!widget.inMultiSelectMode.value) {
       widget.inMultiSelectMode.value = true;
-    }
-  }
-
-  void onDoubleTap() {
-    if (widget.entry != null) {
-      _toggleIsFavorite();
     }
   }
 
@@ -174,14 +167,6 @@ class _WordCollectionPageCellState extends State<WordCollectionPageCell> {
         ),
       ),
     );
-  }
-
-  void _toggleIsFavorite() {
-    setState(() {
-      widget.db.write(() {
-        widget.entry!.isFavorite = !widget.entry!.isFavorite;
-      });
-    });
   }
 
   @override

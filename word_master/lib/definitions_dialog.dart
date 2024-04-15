@@ -12,6 +12,8 @@ class DefinitionsDialog extends StatefulWidget {
   final String? dictionaryId;
   final Realm? db;
   final bool canEdit;
+  final Function()? onToggleFavorite;
+  final ValueNotifier<bool>? isFavoriteNotifier;
 
   const DefinitionsDialog({
     super.key,
@@ -20,6 +22,8 @@ class DefinitionsDialog extends StatefulWidget {
     this.dictionaryId,
     this.db,
     this.canEdit = false,
+    this.onToggleFavorite,
+    this.isFavoriteNotifier,
   }) : assert(
           (db != null && wordOrPhrase != null && dictionaryId != null) ||
               entry != null,
@@ -32,6 +36,7 @@ class DefinitionsDialog extends StatefulWidget {
 
 class _DefinitionsDialogState extends State<DefinitionsDialog> {
   List<Widget> defs = [];
+  bool isFavorite = false;
 
   @override
   void initState() {
@@ -44,11 +49,35 @@ class _DefinitionsDialogState extends State<DefinitionsDialog> {
         db: widget.db,
       ),
     );
+    if (widget.isFavoriteNotifier != null) {
+      isFavorite = widget.isFavoriteNotifier!.value;
+      widget.isFavoriteNotifier!.addListener(() {
+        setState(() {
+          isFavorite = widget.isFavoriteNotifier!.value;
+        });
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      title: widget.isFavoriteNotifier == null
+          ? Container()
+          : Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                IconButton(
+                  highlightColor: Colors.transparent,
+                  splashColor: Colors.transparent,
+                  hoverColor: Colors.transparent,
+                  icon: Icon(Icons.star,
+                      color: isFavorite ? Colors.yellow : Colors.grey,
+                      size: 30),
+                  onPressed: widget.onToggleFavorite,
+                ),
+              ],
+            ),
       content: SizedBox(
         width: MediaQuery.of(context).size.width * 0.6,
         height: MediaQuery.of(context).size.height * 0.5,

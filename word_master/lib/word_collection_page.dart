@@ -151,6 +151,7 @@ class _WordCollectionPageState extends State<WordCollectionPage> {
   }
 
   void _showDefinitions(WordCollectionEntry entry, BuildContext context) {
+    ValueNotifier<bool> isFavoriteNotifier = ValueNotifier(entry.isFavorite);
     showDialog(
       context: context,
       builder: (context) {
@@ -158,14 +159,26 @@ class _WordCollectionPageState extends State<WordCollectionPage> {
           wordOrPhrase: entry.wordOrPhrase,
           db: widget.db,
           dictionaryId: entry.dictionaryId,
+          onToggleFavorite: () {
+            onFavoriteToggle(entry);
+            isFavoriteNotifier.value = entry.isFavorite;
+          },
+          isFavoriteNotifier: isFavoriteNotifier,
         );
       },
-    );
+    ).then((value) {
+      isFavoriteNotifier.dispose();
+      refresh();
+    });
   }
 
   void onFavoriteToggle(WordCollectionEntry entry) {
     widget.db.write(() {
       entry.isFavorite = !entry.isFavorite;
     });
+  }
+
+  void refresh() {
+    setState(() {});
   }
 }

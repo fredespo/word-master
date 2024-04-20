@@ -15,10 +15,23 @@ class WordCollectionShuffler {
         .query("wordCollectionId == '${collection.id}'")
         .toList();
     var ids = [];
+    var shuffledIds = [];
     for (var entry in entries) {
       ids.add(entry.id);
+      shuffledIds.add(entry.id);
     }
-    ids.shuffle();
+    shuffledIds.shuffle();
+
+    // ensure everything is in a different order
+    for (var i = 0; i < ids.length; i++) {
+      if (ids[i] == shuffledIds[i]) {
+        var swapIndex = (i + 1) % shuffledIds.length;
+        var temp = shuffledIds[i];
+        shuffledIds[i] = shuffledIds[swapIndex];
+        shuffledIds[swapIndex] = temp;
+      }
+    }
+
     const batchSize = 1000;
     for (var batchStart = 0;
         batchStart < entries.length;
@@ -27,7 +40,7 @@ class WordCollectionShuffler {
         for (var i = batchStart;
             i < batchStart + batchSize && i < entries.length;
             ++i) {
-          entries[i].id = ids[i];
+          entries[i].id = shuffledIds[i];
         }
       });
       progress.value = batchStart / entries.length;

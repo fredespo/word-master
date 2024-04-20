@@ -357,15 +357,28 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
   void shuffleSelected() {
     var entries = getSelectedEntries();
     var entryData = [];
+    var shuffled = [];
     for (var entry in entries) {
       entryData.add([entry.wordOrPhrase, entry.isFavorite]);
+      shuffled.add([entry.wordOrPhrase, entry.isFavorite]);
     }
-    entryData.shuffle();
+    shuffled.shuffle();
+
+    // ensure everything is in a different order
+    for (var i = 0; i < entries.length; i++) {
+      if (entryData[i][0] == shuffled[i][0]) {
+        var swapIndex = (i + 1) % shuffled.length;
+        var temp = shuffled[i];
+        shuffled[i] = shuffled[swapIndex];
+        shuffled[swapIndex] = temp;
+      }
+    }
+
     var i = 0;
     widget.db.write(() {
       for (var entry in entries) {
-        entry.wordOrPhrase = entryData[i][0];
-        entry.isFavorite = entryData[i][1];
+        entry.wordOrPhrase = shuffled[i][0];
+        entry.isFavorite = shuffled[i][1];
         i++;
       }
     });

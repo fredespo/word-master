@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:realm/realm.dart';
 import 'package:word_master/dictionary.dart';
-import 'package:word_master/random_word_fetcher.dart';
 import 'package:word_master/word_collection_creator.dart';
+import 'package:word_master/word_collection_creator_widget.dart';
 import 'package:word_master/word_collection_entry.dart';
 import 'package:word_master/word_collection_manager.dart';
 import 'package:word_master/word_collection.dart';
@@ -27,11 +27,13 @@ class MainApp extends StatefulWidget {
 class _MainAppState extends State<MainApp> {
   final Realm db = Database.getDbConnection();
   String migrationError = '';
+  late WordCollectionCreator wordCollectionCreator;
 
   @override
   void initState() {
     super.initState();
     initDictionaries();
+    wordCollectionCreator = WordCollectionCreator(db, 1000);
   }
 
   void initDictionaries() {
@@ -85,6 +87,7 @@ class _MainAppState extends State<MainApp> {
             ),
           );
         },
+        wordCollectionCreator: wordCollectionCreator,
       ),
     );
   }
@@ -126,11 +129,13 @@ class _MainAppState extends State<MainApp> {
 class CreateWordTableButton extends StatelessWidget {
   final Realm db;
   final Function(WordCollection wordCollection) onNewWordCollection;
+  final WordCollectionCreator wordCollectionCreator;
 
   const CreateWordTableButton({
     super.key,
     required this.db,
     required this.onNewWordCollection,
+    required this.wordCollectionCreator,
   });
 
   @override
@@ -141,9 +146,25 @@ class CreateWordTableButton extends StatelessWidget {
         showDialog(
           context: context,
           builder: (context) {
-            return WordCollectionCreator(
+            return WordCollectionCreatorWidget(
               dictionaries: db.all<Dictionary>().query("size > 0"),
-              onCreate: createWordCollection,
+              onCreate: (
+                String name,
+                Map<String, int> numEntriesPerDictionaryId,
+                int numCollections,
+                BuildContext context,
+              ) =>
+                  wordCollectionCreator.createWordCollection(
+                name,
+                numEntriesPerDictionaryId,
+                numCollections,
+                context,
+                (WordCollection wordCollection) {
+                  if (numCollections == 1) {
+                    onNewWordCollection(wordCollection);
+                  }
+                },
+              ),
               db: db,
             );
           },
@@ -151,41 +172,5 @@ class CreateWordTableButton extends StatelessWidget {
       },
       child: const Icon(Icons.add),
     );
-  }
-
-  void createWordCollection(
-    String name,
-    Map<String, int> numEntriesPerDictionaryId,
-  ) {
-    var wordCollection = WordCollection(
-      Uuid.v4().toString(),
-      name,
-      DateTime.now(),
-      numEntriesPerDictionaryId.values.reduce((a, b) => a + b),
-    );
-    for (var dictionaryId in numEntriesPerDictionaryId.keys) {
-      var numEntries = numEntriesPerDictionaryId[dictionaryId]!;
-      var words = RandomWordFetcher.getRandomWords(
-        db,
-        dictionaryId,
-        numEntries,
-      );
-      int id = 1;
-      db.write(() {
-        for (var word in words) {
-          db.add(WordCollectionEntry(
-            id++,
-            wordCollection.id,
-            dictionaryId,
-            word,
-            false,
-          ));
-        }
-      });
-    }
-    db.write(() {
-      db.add(wordCollection);
-    });
-    onNewWordCollection(wordCollection);
   }
 }

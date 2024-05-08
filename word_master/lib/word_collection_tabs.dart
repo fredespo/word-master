@@ -11,6 +11,7 @@ import 'package:word_master/word_collection_action_menu.dart';
 import 'package:word_master/word_collection_action_menu_selecting.dart';
 import 'package:word_master/word_collection_adder.dart';
 import 'package:word_master/word_collection_creator.dart';
+import 'package:word_master/word_collection_creator_widget.dart';
 import 'package:word_master/word_collection_entry.dart';
 import 'package:word_master/word_collection_entry_creator.dart';
 import 'package:word_master/word_collection_entry_mover.dart';
@@ -51,6 +52,7 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
   late TabController _tabController;
   ValueNotifier<int> selectedCount = ValueNotifier<int>(0);
   final Map<String, Set<int>> selectedEntryIds = {};
+  late WordCollectionCreator wordCollectionCreator;
 
   @override
   void initState() {
@@ -60,6 +62,7 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
       addWordCollection(wordCollection);
     }
     super.initState();
+    wordCollectionCreator = WordCollectionCreator(widget.db, 1000);
   }
 
   @override
@@ -438,49 +441,27 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
     showDialog(
       context: context,
       builder: (context) {
-        return WordCollectionCreator(
+        return WordCollectionCreatorWidget(
           dictionaries: widget.db.all<Dictionary>().query("size > 0"),
-          onCreate: createWordCollection,
+          onCreate: (
+            String name,
+            Map<String, int> numEntriesPerDictionaryId,
+            int numCollections,
+            BuildContext context,
+          ) =>
+              wordCollectionCreator.createWordCollection(
+            name,
+            numEntriesPerDictionaryId,
+            numCollections,
+            context,
+            (WordCollection wordCollection) {
+              addWordCollection(wordCollection);
+            },
+          ),
           db: widget.db,
         );
       },
     );
-  }
-
-  void createWordCollection(
-    String name,
-    Map<String, int> numEntriesPerDictionaryId,
-  ) {
-    var wordCollection = WordCollection(
-      Uuid.v4().toString(),
-      name,
-      DateTime.now(),
-      numEntriesPerDictionaryId.values.reduce((a, b) => a + b),
-    );
-    for (var dictionaryId in numEntriesPerDictionaryId.keys) {
-      var numEntries = numEntriesPerDictionaryId[dictionaryId]!;
-      var words = RandomWordFetcher.getRandomWords(
-        widget.db,
-        dictionaryId,
-        numEntries,
-      );
-      int id = 1;
-      widget.db.write(() {
-        for (var word in words) {
-          widget.db.add(WordCollectionEntry(
-            id++,
-            wordCollection.id,
-            dictionaryId,
-            word,
-            false,
-          ));
-        }
-      });
-    }
-    widget.db.write(() {
-      widget.db.add(wordCollection);
-    });
-    addWordCollection(wordCollection);
   }
 
   handleCloseCurrentTabAction() {
@@ -541,6 +522,7 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
                 wordCollections.indexOf(wordCollection),
               );
             },
+            wordCollectionCreator: wordCollectionCreator,
           );
         },
       ),
@@ -552,13 +534,11 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
     var wordCollection = getCurrentWordCollection();
     showDialog(
         context: context,
-        builder: (context) => WordCollectionShuffleDialog(
-            wordCollection: wordCollection, progress: progress));
+        builder: (context) =>
+            ProgressDialog(progress: progress, message: 'Shuffling'));
     await WordCollectionShuffler.shuffle(wordCollection, progress, widget.db);
 
     refreshWordCollection(wordCollection);
-
-    Navigator.pop(context); // Close the progress dialog
   }
 
   void refreshWordCollection(WordCollection wordCollection) {

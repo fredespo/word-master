@@ -3,6 +3,7 @@ import 'package:flutter/scheduler.dart';
 import 'package:realm/realm.dart';
 import 'package:word_master/select_all_notifier.dart';
 import 'package:word_master/word_collection.dart';
+import 'package:word_master/word_collection_creator.dart';
 import 'package:word_master/word_collection_data.dart';
 import 'package:word_master/word_collection_entry.dart';
 import 'package:word_master/word_collection_entry_creator.dart';
@@ -18,12 +19,14 @@ class WordCollectionManager extends StatefulWidget {
   final Realm db;
   final String title;
   final Function(BuildContext, WordCollection) onTapWordCollection;
+  final WordCollectionCreator wordCollectionCreator;
 
   const WordCollectionManager({
     super.key,
     required this.db,
     required this.title,
     required this.onTapWordCollection,
+    required this.wordCollectionCreator,
   });
 
   @override
@@ -241,10 +244,12 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
               padding: const EdgeInsets.fromLTRB(0, 0, 30, 30),
               child: Builder(builder: (context) {
                 return CreateWordTableButton(
-                    db: widget.db,
-                    onNewWordCollection: (wordCollection) {
-                      _openWordCollection(context, wordCollection);
-                    });
+                  db: widget.db,
+                  onNewWordCollection: (wordCollection) {
+                    _openWordCollection(context, wordCollection);
+                  },
+                  wordCollectionCreator: widget.wordCollectionCreator,
+                );
               }),
             ),
     );

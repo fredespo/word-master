@@ -1,94 +1,95 @@
 import 'package:flutter/material.dart';
 import 'package:realm/realm.dart';
-import 'package:word_master/random_words_selector.dart';
+import 'package:word_master/random_word_fetcher.dart';
+import 'package:word_master/word_collection.dart';
+import 'package:word_master/word_collection_entry.dart';
+import 'package:word_master/word_collection_shuffle_dialog.dart';
 
-import 'dictionary.dart';
-
-class WordCollectionCreator extends StatefulWidget {
-  final Function(String, Map<String, int>) onCreate;
-  final RealmResults<Dictionary> dictionaries;
+class WordCollectionCreator {
   final Realm db;
+  final int batchSize;
 
-  const WordCollectionCreator({
-    super.key,
-    required this.onCreate,
-    required this.dictionaries,
-    required this.db,
-  });
+  WordCollectionCreator(this.db, this.batchSize);
 
-  @override
-  State<WordCollectionCreator> createState() => _WordCollectionCreatorState();
-}
+  void createWordCollection(
+    String name,
+    Map<String, int> numEntriesPerDictionaryId,
+    int numCollections,
+    BuildContext context,
+    Function(WordCollection)? onNewWordCollection,
+  ) async {
+    var progress = ValueNotifier<double>(0.0);
+    showDialog(
+      context: context,
+      builder: (context) => ProgressDialog(
+        progress: progress,
+        message:
+            'Creating word ${numCollections > 1 ? 'collections' : 'collection'}',
+      ),
+    );
+    for (var i = 0; i < numCollections; ++i) {
+      var curName = numCollections > 1 ? '$name ${i + 1}' : name;
+      var curProgress = ValueNotifier<double>(0.0);
+      curProgress.addListener(() {
+        progress.value =
+            (i / numCollections) + (curProgress.value / numCollections);
+      });
+      var wordCollection = await _createWordCollection(
+          curName, numEntriesPerDictionaryId, curProgress);
+      if (onNewWordCollection != null) onNewWordCollection(wordCollection);
+    }
+    progress.value = 1.0;
+  }
 
-class _WordCollectionCreatorState extends State<WordCollectionCreator> {
-  String name = '';
-  Map<String, int> numEntriesPerDictionaryId = {};
-
-  @override
-  Widget build(BuildContext context) {
-    return widget.dictionaries.isEmpty ||
-            widget.dictionaries.every((element) => element.size == 0)
-        ? AlertDialog(
-            title: const Text('No words found'),
-            content: const Text('Please add or import dictionary data first.'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text('OK'),
-              ),
-            ],
-          )
-        : AlertDialog(
-            title: const Text('Create a new collection',
-                textAlign: TextAlign.center),
-            content: IntrinsicHeight(
-              child: Column(children: [
-                TextField(
-                  onChanged: (value) {
-                    setState(() {
-                      name = value;
-                    });
-                  },
-                  decoration: const InputDecoration(
-                    border: OutlineInputBorder(),
-                    labelText: 'Name',
-                  ),
-                ),
-                const SizedBox(height: 20),
-                RandomWordsSelector(
-                  dictionaries: widget.dictionaries,
-                  db: widget.db,
-                  onNumEntriesChanged: (Dictionary dict, int numEntries) {
-                    setState(() {
-                      if (numEntries == 0) {
-                        numEntriesPerDictionaryId.remove(dict.id);
-                        return;
-                      }
-                      numEntriesPerDictionaryId[dict.id] = numEntries;
-                    });
-                  },
-                ),
-              ]),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: numEntriesPerDictionaryId.isNotEmpty
-                    ? () {
-                        Navigator.of(context).pop();
-                        widget.onCreate(name, numEntriesPerDictionaryId);
-                      }
-                    : null,
-                child: const Text('Create'),
-              ),
-            ],
-          );
+  Future<WordCollection> _createWordCollection(
+    String name,
+    Map<String, int> numEntriesPerDictionaryId,
+    ValueNotifier<double> progress,
+  ) async {
+    var totalEntryCount =
+        numEntriesPerDictionaryId.values.reduce((a, b) => a + b);
+    var wordCollection = WordCollection(
+      Uuid.v4().toString(),
+      name,
+      DateTime.now(),
+      totalEntryCount,
+    );
+    var curEntryCount = 0;
+    for (var dictionaryId in numEntriesPerDictionaryId.keys) {
+      var numEntries = numEntriesPerDictionaryId[dictionaryId]!;
+      var words = RandomWordFetcher.getRandomWords(
+        db,
+        dictionaryId,
+        numEntries,
+      );
+      int id = 1;
+      int batchSize = 1000;
+      for (int batchStart = 0;
+          batchStart < words.length;
+          batchStart += batchSize) {
+        db.write(() {
+          for (var i = batchStart;
+              i < batchStart + batchSize && i < words.length;
+              ++i) {
+            var word = words[i];
+            db.add(WordCollectionEntry(
+              id++,
+              wordCollection.id,
+              dictionaryId,
+              word,
+              false,
+            ));
+            ++curEntryCount;
+          }
+        });
+        progress.value = curEntryCount / totalEntryCount;
+        await Future.delayed(const Duration(milliseconds: 1));
+      }
+    }
+    db.write(() {
+      db.add(wordCollection);
+    });
+    progress.value = 1.0;
+    return wordCollection;
   }
 }

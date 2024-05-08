@@ -46,5 +46,6 @@ class WordCollectionShuffler {
       progress.value = batchStart / entries.length;
       await Future.delayed(const Duration(milliseconds: 1));
     }
+    progress.value = 1.0;
   }
 }

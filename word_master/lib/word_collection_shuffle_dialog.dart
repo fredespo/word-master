@@ -2,34 +2,38 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:word_master/word_collection.dart';
 
-class WordCollectionShuffleDialog extends StatefulWidget {
-  final WordCollection wordCollection;
+class ProgressDialog extends StatefulWidget {
   final ValueListenable<double> progress;
+  final String message;
 
-  const WordCollectionShuffleDialog({
+  const ProgressDialog({
     super.key,
-    required this.wordCollection,
     required this.progress,
+    required this.message,
   });
 
   @override
-  State<WordCollectionShuffleDialog> createState() =>
-      _WordCollectionShuffleDialogState();
+  State<ProgressDialog> createState() => _ProgressDialogState();
 }
 
-class _WordCollectionShuffleDialogState
-    extends State<WordCollectionShuffleDialog> {
+class _ProgressDialogState extends State<ProgressDialog> {
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Shuffling'),
-      content: ValueListenableBuilder<double>(
-        valueListenable: widget.progress,
-        builder: (context, value, child) {
-          return LinearProgressIndicator(
-            value: value,
-          );
-        },
+    return WillPopScope(
+      onWillPop: () async => false,
+      child: AlertDialog(
+        title: Text(widget.message),
+        content: ValueListenableBuilder<double>(
+          valueListenable: widget.progress,
+          builder: (context, value, child) {
+            if (value >= 1.0) {
+              Navigator.of(context).pop();
+            }
+            return LinearProgressIndicator(
+              value: value,
+            );
+          },
+        ),
       ),
     );
   }

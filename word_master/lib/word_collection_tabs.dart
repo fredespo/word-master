@@ -272,13 +272,13 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
         selectCurrPage: _onSelectAllOnCurrentPage,
         selectPages: _selectPages,
         onShuffle: shuffleSelected,
-        onReinsert: reinsertSelected,
+        onDisperse: disperseSelected,
         deselectAll: deselectAll,
       )
     ];
   }
 
-  Future reinsertSelected() async {
+  Future disperseSelected() async {
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -291,7 +291,7 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
               children: const [
                 CircularProgressIndicator(),
                 SizedBox(height: 16),
-                Text('Reinserting selected entries...'),
+                Text('Dispersing selected entries...'),
               ],
             ),
           ),
@@ -316,7 +316,7 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
     Navigator.pop(context);
   }
 
-  Future reinsert(
+  Future disperse(
     WordCollectionEntry entry,
     WordCollection wordCollection,
     List<WordCollectionEntry> existingEntries,

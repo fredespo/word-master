@@ -7,8 +7,8 @@ class WordCollectionActionMenuSelecting extends StatelessWidget {
   static const actionValueSelectPages = 1;
   final Function() onShuffle;
   static const actionValueShuffle = 2;
-  final Future Function() onReinsert;
-  static const actionValueReinsert = 3;
+  final Future Function() onDisperse;
+  static const actionValueDisperse = 3;
   final Function() deselectAll;
 
   const WordCollectionActionMenuSelecting({
@@ -16,7 +16,7 @@ class WordCollectionActionMenuSelecting extends StatelessWidget {
     required this.selectCurrPage,
     required this.selectPages,
     required this.onShuffle,
-    required this.onReinsert,
+    required this.onDisperse,
     required this.deselectAll,
   });
 
@@ -38,8 +38,8 @@ class WordCollectionActionMenuSelecting extends StatelessWidget {
             child: Text('Shuffle selected'),
           ),
           const PopupMenuItem(
-            value: actionValueReinsert,
-            child: Text('Reinsert selected'),
+            value: actionValueDisperse,
+            child: Text('Disperse selected'),
           ),
         ];
       },
@@ -62,8 +62,8 @@ class WordCollectionActionMenuSelecting extends StatelessWidget {
         deselectAll();
         break;
 
-      case actionValueReinsert:
-        await onReinsert();
+      case actionValueDisperse:
+        await onDisperse();
         deselectAll();
         break;
     }

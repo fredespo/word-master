@@ -10,7 +10,7 @@ class WordCollectionPage extends StatefulWidget {
   final int startIndex;
   final int endIndex;
   final int numTotalEntries;
-  final List<WordCollectionEntry> entries;
+  final RealmResults<WordCollectionEntry> entries;
   final Realm db;
   final ValueNotifier<int> pageNumNotifier;
   final ValueNotifier<int> pageHeight;

@@ -137,8 +137,8 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
   Widget _buildPageList() {
     final sortedEntries = widget.entries.query("TRUEPREDICATE SORT(id ASC)");
     final entries = _viewingFaves
-        ? sortedEntries.query("isFavorite == true").toList()
-        : sortedEntries.toList();
+        ? sortedEntries.query("isFavorite == true")
+        : sortedEntries;
     var pageCount =
         (entries.length / WordCollectionWidget.numWordsPerPage).ceil();
     SchedulerBinding.instance.addPostFrameCallback((_) {
@@ -159,7 +159,7 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
     );
   }
 
-  Widget _buildPage(int index, List<WordCollectionEntry> entries) {
+  Widget _buildPage(int index, RealmResults<WordCollectionEntry> entries) {
     int startIndex = index * WordCollectionWidget.numWordsPerPage;
     int endIndex =
         min((index + 1) * WordCollectionWidget.numWordsPerPage, entries.length);

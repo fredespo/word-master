@@ -70,7 +70,8 @@ class WordCollectionEntry extends _WordCollectionEntry
     return const SchemaObject(
         ObjectType.realmObject, WordCollectionEntry, 'WordCollectionEntry', [
       SchemaProperty('id', RealmPropertyType.int),
-      SchemaProperty('wordCollectionId', RealmPropertyType.string),
+      SchemaProperty('wordCollectionId', RealmPropertyType.string,
+          indexType: RealmIndexType.regular),
       SchemaProperty('dictionaryId', RealmPropertyType.string),
       SchemaProperty('wordOrPhrase', RealmPropertyType.string),
       SchemaProperty('isFavorite', RealmPropertyType.bool),

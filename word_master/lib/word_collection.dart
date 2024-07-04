@@ -8,4 +8,6 @@ class _WordCollection {
   late String name;
   late DateTime createdOn;
   late int size;
+  late String status;
+  late double progress;
 }

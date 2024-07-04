@@ -8,6 +8,7 @@ import 'package:word_master/word_collection_data.dart';
 import 'package:word_master/word_collection_entry.dart';
 import 'package:word_master/word_collection_entry_creator.dart';
 import 'package:word_master/word_collection_migration_dialog.dart';
+import 'package:word_master/word_collection_status.dart';
 import 'package:word_master/word_collection_tabs.dart';
 import 'package:word_master/word_collections_list.dart';
 
@@ -43,6 +44,8 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
   @override
   Widget build(BuildContext context) {
     var allCollections = widget.db.all<WordCollection>();
+    var completeCollections = allCollections.where((e) =>
+        WordCollectionStatus.getStatus(e) == WordCollectionStatus.created);
     return Scaffold(
       backgroundColor: Colors.grey.shade200,
       appBar: AppBar(
@@ -66,7 +69,8 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
                         ),
                       ),
                       Text("${selectedCollections.length} selected"),
-                      if (selectedCollections.length < allCollections.length)
+                      if (selectedCollections.length <
+                          completeCollections.length)
                         Padding(
                           padding: const EdgeInsets.fromLTRB(15, 3, 10, 0),
                           child: TextButton(
@@ -74,7 +78,7 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
                               selectAllNotifier.triggerSelectAll();
                               setState(() {
                                 selectedCollections.clear();
-                                selectedCollections.addAll(allCollections);
+                                selectedCollections.addAll(completeCollections);
                               });
                             },
                             style: TextButton.styleFrom(

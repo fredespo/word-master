@@ -13,11 +13,15 @@ class WordCollection extends _WordCollection
     String name,
     DateTime createdOn,
     int size,
+    String status,
+    double progress,
   ) {
     RealmObjectBase.set(this, 'id', id);
     RealmObjectBase.set(this, 'name', name);
     RealmObjectBase.set(this, 'createdOn', createdOn);
     RealmObjectBase.set(this, 'size', size);
+    RealmObjectBase.set(this, 'status', status);
+    RealmObjectBase.set(this, 'progress', progress);
   }
 
   WordCollection._();
@@ -45,6 +49,17 @@ class WordCollection extends _WordCollection
   set size(int value) => RealmObjectBase.set(this, 'size', value);
 
   @override
+  String get status => RealmObjectBase.get<String>(this, 'status') as String;
+  @override
+  set status(String value) => RealmObjectBase.set(this, 'status', value);
+
+  @override
+  double get progress =>
+      RealmObjectBase.get<double>(this, 'progress') as double;
+  @override
+  set progress(double value) => RealmObjectBase.set(this, 'progress', value);
+
+  @override
   Stream<RealmObjectChanges<WordCollection>> get changes =>
       RealmObjectBase.getChanges<WordCollection>(this);
 
@@ -61,6 +76,8 @@ class WordCollection extends _WordCollection
       SchemaProperty('name', RealmPropertyType.string),
       SchemaProperty('createdOn', RealmPropertyType.timestamp),
       SchemaProperty('size', RealmPropertyType.int),
+      SchemaProperty('status', RealmPropertyType.string),
+      SchemaProperty('progress', RealmPropertyType.double),
     ]);
   }
 }

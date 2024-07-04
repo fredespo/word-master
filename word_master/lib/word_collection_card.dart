@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:word_master/select_all_notifier.dart';
 import 'package:word_master/word_collection.dart';
+import 'package:word_master/word_collection_status.dart';
 
 class WordCollectionCard extends StatefulWidget {
   final WordCollection wordCollection;
@@ -53,6 +54,7 @@ class _WordCollectionCardState extends State<WordCollectionCard> {
     if (!widget.inMultiSelectMode.value) {
       _selected = false;
     }
+    final String status = WordCollectionStatus.getStatus(widget.wordCollection);
 
     var main = ValueListenableBuilder(
       valueListenable: widget.inMultiSelectMode,
@@ -62,24 +64,17 @@ class _WordCollectionCardState extends State<WordCollectionCard> {
         Widget? child,
       ) {
         return GestureDetector(
-          onTap: inMultiSelectModeValue
-              ? () => _toggleIsSelected()
-              : () => widget.onTap(widget.wordCollection),
-          onLongPress: inMultiSelectModeValue
-              ? null
-              : () {
-                  widget.inMultiSelectMode.value = true;
-                  _toggleIsSelected();
-                },
+          onTap: getOnTap(inMultiSelectModeValue, status),
+          onLongPress: getOnLongPress(inMultiSelectModeValue, status),
           child: FractionallySizedBox(
             widthFactor: widget.widthFactor,
-            child: _buildCard(inMultiSelectModeValue),
+            child: _buildCard(inMultiSelectModeValue, status),
           ),
         );
       },
     );
 
-    return widget.isDismissible
+    return widget.isDismissible && status != WordCollectionStatus.inProgress
         ? Center(
             child: Dismissible(
               key: Key(ObjectKey(widget.wordCollection).toString()),
@@ -114,6 +109,29 @@ class _WordCollectionCardState extends State<WordCollectionCard> {
         : Center(child: main);
   }
 
+  void Function()? getOnTap(final bool inMultiSelectMode, final String status) {
+    if (status == WordCollectionStatus.created) {
+      return inMultiSelectMode
+          ? () => _toggleIsSelected()
+          : () => widget.onTap(widget.wordCollection);
+    }
+    return null;
+  }
+
+  void Function()? getOnLongPress(
+      final bool inMultiSelectMode, final String status) {
+    if (status == WordCollectionStatus.created) {
+      return inMultiSelectMode
+          ? null
+          : () {
+              widget.inMultiSelectMode.value = true;
+              _toggleIsSelected();
+            };
+    }
+
+    return null;
+  }
+
   void _toggleIsSelected() {
     setState(() {
       _selected = !_selected;
@@ -125,7 +143,7 @@ class _WordCollectionCardState extends State<WordCollectionCard> {
     }
   }
 
-  Widget _buildCard(bool inMultiSelectMode) {
+  Widget _buildCard(bool inMultiSelectMode, String status) {
     return Card(
       child: Stack(
         children: [
@@ -140,33 +158,47 @@ class _WordCollectionCardState extends State<WordCollectionCard> {
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
-                  children: _buildBody(),
+                  children: _buildBody(status),
                 ),
               ),
             ),
           ),
-          if (inMultiSelectMode) _buildMultiSelectIndicator(),
+          if (inMultiSelectMode && status == WordCollectionStatus.created)
+            _buildMultiSelectIndicator(),
         ],
       ),
     );
   }
 
-  List<Widget> _buildBody() {
+  List<Widget> _buildBody(final String status) {
     final DateTime createdOn = widget.wordCollection.createdOn;
     List<Widget> widgets = [];
     if (widget.wordCollection.name.isNotEmpty) {
       widgets.add(Text(widget.wordCollection.name,
-          style: const TextStyle(
+          style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
+            color: status == WordCollectionStatus.inProgress
+                ? const Color.fromARGB(255, 85, 85, 85)
+                : status == WordCollectionStatus.pending
+                    ? Colors.grey
+                    : Colors.black,
           )));
       widgets.add(const SizedBox(height: 8));
     }
-    widgets.add(Text(
-        "Created on ${createdOn.month}/${createdOn.day}/${createdOn.year}"));
-    widgets.add(const SizedBox(height: 8));
-    widgets.add(Text(
-        "with ${_numberFormat.format(widget.wordCollection.size)} entries"));
+    if (status == WordCollectionStatus.pending) {
+      widgets.add(const Text("Pending"));
+    }
+    if (status == WordCollectionStatus.inProgress) {
+      widgets.add(const LinearProgressIndicator());
+    }
+    if (status == WordCollectionStatus.created) {
+      widgets.add(Text(
+          "Created on ${createdOn.month}/${createdOn.day}/${createdOn.year}"));
+      widgets.add(const SizedBox(height: 8));
+      widgets.add(Text(
+          "with ${_numberFormat.format(widget.wordCollection.size)} entries"));
+    }
     return widgets;
   }
 
@@ -195,9 +227,12 @@ class _WordCollectionCardState extends State<WordCollectionCard> {
   }
 
   void _onSelectAll() {
-    setState(() {
-      _selected = true;
-    });
+    final String status = WordCollectionStatus.getStatus(widget.wordCollection);
+    if (status == WordCollectionStatus.created) {
+      setState(() {
+        _selected = true;
+      });
+    }
   }
 
   @override

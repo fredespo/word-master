@@ -4,6 +4,7 @@ import 'package:realm/realm.dart';
 import 'package:word_master/word_collection.dart';
 import 'package:word_master/word_collection_data.dart';
 import 'package:word_master/word_collection_entry_migration.dart';
+import 'package:word_master/word_collection_status.dart';
 
 class WordCollectionMigrationDialog extends StatefulWidget {
   final WordCollectionData oldWordCollection;
@@ -84,6 +85,8 @@ class _WordCollectionMigrationDialogState
       widget.oldWordCollection.name,
       DateTime.now(),
       widget.oldWordCollection.words.length,
+      WordCollectionStatus.created,
+      100,
     );
 
     await compute(

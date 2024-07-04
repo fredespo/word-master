@@ -62,7 +62,7 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
       addWordCollection(wordCollection);
     }
     super.initState();
-    wordCollectionCreator = WordCollectionCreator(widget.db, 1000);
+    wordCollectionCreator = WordCollectionCreator(widget.db);
   }
 
   @override
@@ -259,7 +259,6 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
         onJumpToPage: handleJumpToPageAction,
         onViewAll: handleViewAllAction,
         onViewFaves: handleViewOnlyFavoritesAction,
-        onOpenInNewTab: handleOpenInNewTabAction,
         onCloseCurrentTab: handleCloseCurrentTabAction,
         onShuffle: handleShuffleAction,
       )
@@ -412,56 +411,6 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
         .query("wordCollectionId == '$wordCollectionId'")
         .query("id == $entryId")
         .first;
-  }
-
-  void handleOpenInNewTabAction() {
-    var openableWordCollections = widget.db
-        .all<WordCollection>()
-        .where(
-            (collection) => !wordCollections.any((c) => c.id == collection.id))
-        .toList();
-    showDialog(
-        context: context,
-        builder: (context) {
-          return WordCollectionSelectionDialog(
-            wordCollections: openableWordCollections,
-            onSelect: _onOpenWordCollection,
-            onCreateNewCollection: _handleNewWordCollectionCreation,
-          );
-        });
-  }
-
-  _onOpenWordCollection(WordCollection wordCollection) {
-    Navigator.pop(context);
-    addWordCollection(wordCollection);
-  }
-
-  _handleNewWordCollectionCreation() {
-    Navigator.pop(context);
-    showDialog(
-      context: context,
-      builder: (context) {
-        return WordCollectionCreatorWidget(
-          dictionaries: widget.db.all<Dictionary>().query("size > 0"),
-          onCreate: (
-            String name,
-            Map<String, int> numEntriesPerDictionaryId,
-            int numCollections,
-            BuildContext context,
-          ) =>
-              wordCollectionCreator.createWordCollection(
-            name,
-            numEntriesPerDictionaryId,
-            numCollections,
-            context,
-            (WordCollection wordCollection) {
-              addWordCollection(wordCollection);
-            },
-          ),
-          db: widget.db,
-        );
-      },
-    );
   }
 
   handleCloseCurrentTabAction() {

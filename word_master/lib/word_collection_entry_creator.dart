@@ -8,6 +8,7 @@ import 'package:word_master/select_all_notifier.dart';
 import 'package:word_master/word_collection.dart';
 import 'package:word_master/word_collection_card.dart';
 import 'package:word_master/word_collection_entry.dart';
+import 'package:word_master/word_collection_status.dart';
 
 import 'dictionary.dart';
 import 'dictionary_definition_creator.dart';
@@ -126,48 +127,61 @@ class _WordCollectionEntryCreatorState
   Widget _buildWordCollectionSelectionPage() {
     // select multiple word collections
     var allWordCollections = widget.db.all<WordCollection>();
-    return SizedBox(
-      width: 300,
-      child: Column(
-        children: [
-          const SizedBox(
-            width: 200,
-            child: Text(
-              'Select word collections where the new entry will be saved',
-              textAlign: TextAlign.center,
+    return StreamBuilder<RealmResultsChanges<RealmObject>>(
+        stream: allWordCollections.changes,
+        builder: (context, snapshot) {
+          if (!snapshot.hasData) {
+            return const SizedBox(
+              height: 300,
+              child: Center(child: CircularProgressIndicator()),
+            );
+          }
+          var completeWordCollections = allWordCollections.where((e) =>
+              WordCollectionStatus.getStatus(e) ==
+              WordCollectionStatus.created);
+          return SizedBox(
+            width: 300,
+            child: Column(
+              children: [
+                const SizedBox(
+                  width: 200,
+                  child: Text(
+                    'Select word collections where the new entry will be saved',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+                _buildSelectAllButton(completeWordCollections),
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: allWordCollections.length,
+                    itemBuilder: (context, index) {
+                      var wordCollection = allWordCollections[index];
+                      return WordCollectionCard(
+                        wordCollection: wordCollection,
+                        isSelectedInitially: selectedWordCollectionIds
+                            .contains(wordCollection.id),
+                        onTap: (WordCollection collection) {},
+                        isDismissible: false,
+                        inMultiSelectMode: ValueNotifier<bool>(true),
+                        onSelected: (WordCollection collection) {
+                          setState(() {
+                            selectedWordCollectionIds.add(collection.id);
+                          });
+                        },
+                        onDeselected: (WordCollection collection) {
+                          setState(() {
+                            selectedWordCollectionIds.remove(collection.id);
+                          });
+                        },
+                        selectAllNotifier: widget.selectAllNotifier,
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
-          ),
-          _buildSelectAllButton(allWordCollections),
-          Expanded(
-            child: ListView.builder(
-              itemCount: allWordCollections.length,
-              itemBuilder: (context, index) {
-                var wordCollection = allWordCollections[index];
-                return WordCollectionCard(
-                  wordCollection: wordCollection,
-                  isSelectedInitially:
-                      selectedWordCollectionIds.contains(wordCollection.id),
-                  onTap: (WordCollection collection) {},
-                  isDismissible: false,
-                  inMultiSelectMode: ValueNotifier<bool>(true),
-                  onSelected: (WordCollection collection) {
-                    setState(() {
-                      selectedWordCollectionIds.add(collection.id);
-                    });
-                  },
-                  onDeselected: (WordCollection collection) {
-                    setState(() {
-                      selectedWordCollectionIds.remove(collection.id);
-                    });
-                  },
-                  selectAllNotifier: widget.selectAllNotifier,
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
+          );
+        });
   }
 
   Widget _buildEntryCreationPage() {
@@ -270,8 +284,10 @@ class _WordCollectionEntryCreatorState
     );
   }
 
-  Widget _buildSelectAllButton(
-      RealmResults<WordCollection> allWordCollections) {
+  Widget _buildSelectAllButton(Iterable<WordCollection> allWordCollections) {
+    if (selectedWordCollectionIds.length == allWordCollections.length) {
+      return const SizedBox(height: 58);
+    }
     return Padding(
       padding: const EdgeInsets.all(15),
       child: ElevatedButton(

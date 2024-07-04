@@ -1,5 +1,6 @@
 import 'package:realm/realm.dart';
 import 'package:word_master/word_collection.dart';
+import 'package:word_master/word_collection_add_rand_entries_job.dart';
 import 'package:word_master/word_collection_data.dart';
 import 'package:word_master/word_collection_entry.dart';
 
@@ -17,8 +18,9 @@ class Database {
         ImportedDictionary.schema,
         WordCollectionEntry.schema,
         WordCollection.schema,
+        WordCollectionAddRandEntriesJob.schema
       ],
-      schemaVersion: 10,
+      schemaVersion: 12,
     ));
   }
 }

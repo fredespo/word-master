@@ -33,7 +33,8 @@ class _MainAppState extends State<MainApp> {
   void initState() {
     super.initState();
     initDictionaries();
-    wordCollectionCreator = WordCollectionCreator(db, 1000);
+    wordCollectionCreator = WordCollectionCreator(db);
+    WordCollectionCreator.watchForWordCollectionsToCreateInBg();
   }
 
   void initDictionaries() {
@@ -159,11 +160,6 @@ class CreateWordTableButton extends StatelessWidget {
                 numEntriesPerDictionaryId,
                 numCollections,
                 context,
-                (WordCollection wordCollection) {
-                  if (numCollections == 1) {
-                    onNewWordCollection(wordCollection);
-                  }
-                },
               ),
               db: db,
             );

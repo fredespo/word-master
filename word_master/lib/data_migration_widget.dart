@@ -3,6 +3,7 @@ import 'package:realm/realm.dart';
 import 'package:word_master/word_collection.dart';
 import 'package:word_master/word_collection_data.dart';
 import 'package:word_master/word_collection_entry.dart';
+import 'package:word_master/word_collection_status.dart';
 
 import 'dictionary.dart';
 import 'dictionary_entry.dart';
@@ -199,11 +200,12 @@ class _DataMigrationWidgetState extends State<DataMigrationWidget> {
 
       var oldWordCollection = oldWordCollections[i];
       var newWordCollection = WordCollection(
-        Uuid.v4().toString(),
-        oldWordCollection.name,
-        DateTime.now(),
-        oldWordCollection.words.length,
-      );
+          Uuid.v4().toString(),
+          oldWordCollection.name,
+          DateTime.now(),
+          oldWordCollection.words.length,
+          WordCollectionStatus.created,
+          100);
       widget.db.write(() {
         try {
           widget.db.add(newWordCollection);

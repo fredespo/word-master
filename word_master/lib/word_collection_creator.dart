@@ -1,51 +1,113 @@
+import 'dart:isolate';
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:realm/realm.dart';
 import 'package:word_master/random_word_fetcher.dart';
 import 'package:word_master/word_collection.dart';
+import 'package:word_master/word_collection_add_rand_entries_job.dart';
 import 'package:word_master/word_collection_entry.dart';
-import 'package:word_master/word_collection_shuffle_dialog.dart';
+import 'package:word_master/word_collection_status.dart';
+
+import 'database.dart';
 
 class WordCollectionCreator {
   final Realm db;
-  final int batchSize;
 
-  WordCollectionCreator(this.db, this.batchSize);
+  WordCollectionCreator(this.db);
 
-  void createWordCollection(
-    String name,
-    Map<String, int> numEntriesPerDictionaryId,
-    int numCollections,
-    BuildContext context,
-    Function(WordCollection)? onNewWordCollection,
-  ) async {
-    var progress = ValueNotifier<double>(0.0);
-    showDialog(
-      context: context,
-      builder: (context) => ProgressDialog(
-        progress: progress,
-        message:
-            'Creating word ${numCollections > 1 ? 'collections' : 'collection'}',
-      ),
-    );
-    for (var i = 0; i < numCollections; ++i) {
-      var curName = numCollections > 1 ? '$name ${i + 1}' : name;
-      var curProgress = ValueNotifier<double>(0.0);
-      curProgress.addListener(() {
-        progress.value =
-            (i / numCollections) + (curProgress.value / numCollections);
-      });
-      var wordCollection = await _createWordCollection(
-          curName, numEntriesPerDictionaryId, curProgress);
-      if (onNewWordCollection != null) onNewWordCollection(wordCollection);
-    }
-    progress.value = 1.0;
+  static watchForWordCollectionsToCreateInBg() {
+    RootIsolateToken token = RootIsolateToken.instance!;
+    Isolate.spawn(_createWordCollections, token);
   }
 
-  Future<WordCollection> _createWordCollection(
+  static Future<void> _createWordCollections(RootIsolateToken token) async {
+    Realm db = Database.getDbConnection();
+    final leftover = db
+        .all<WordCollection>()
+        .where((c) =>
+            WordCollectionStatus.getStatus(c) != WordCollectionStatus.created)
+        .toList();
+    for (final collection in leftover) {
+      if (isOrphaned(collection, db)) {
+        db.write(() => db.delete(collection));
+      } else {
+        createEntries(collection, db);
+      }
+    }
+
+    while (true) {
+      try {
+        final wordCollection = db
+            .all<WordCollection>()
+            .where((c) =>
+                WordCollectionStatus.getStatus(c) ==
+                WordCollectionStatus.pending)
+            .first;
+        createEntries(wordCollection, db);
+      } on StateError {
+        await Future.delayed(const Duration(seconds: 5));
+        continue;
+      }
+    }
+  }
+
+  static bool isOrphaned(WordCollection wordCollection, Realm db) {
+    return db
+        .all<WordCollectionAddRandEntriesJob>()
+        .where((e) => e.wordCollectionId == wordCollection.id)
+        .isEmpty;
+  }
+
+  static void createEntries(WordCollection wordCollection, Realm db) {
+    final randEntries = db
+        .all<WordCollectionAddRandEntriesJob>()
+        .where((e) => e.wordCollectionId == wordCollection.id)
+        .toList();
+    db.write(() {
+      WordCollectionStatus.getStatus(c) = WordCollectionStatus.inProgress;
+    });
+    db.write(() {
+      for (final entries in randEntries) {
+        _createWordCollectionEntries(
+          db,
+          wordCollection.id,
+          entries.dictionaryId,
+          entries.numEntries,
+        );
+        db.delete(entries);
+      }
+      wordCollection.status = WordCollectionStatus.created;
+    });
+  }
+
+  void createWordCollection(
+      String name,
+      Map<String, int> numEntriesPerDictionaryId,
+      int numCollections,
+      BuildContext context) async {
+    for (var i = 0; i < numCollections; ++i) {
+      var curName = numCollections > 1 ? '$name ${i + 1}' : name;
+      var wordCollection = _createWordCollectionWithoutEntries(
+        curName,
+        numEntriesPerDictionaryId,
+      );
+      db.write(() {
+        for (final entries in numEntriesPerDictionaryId.entries) {
+          db.add(WordCollectionAddRandEntriesJob(
+            wordCollection.id,
+            entries.key,
+            entries.value,
+          ));
+        }
+      });
+    }
+  }
+
+  WordCollection _createWordCollectionWithoutEntries(
     String name,
     Map<String, int> numEntriesPerDictionaryId,
-    ValueNotifier<double> progress,
-  ) async {
+  ) {
     var totalEntryCount =
         numEntriesPerDictionaryId.values.reduce((a, b) => a + b);
     var wordCollection = WordCollection(
@@ -53,43 +115,31 @@ class WordCollectionCreator {
       name,
       DateTime.now(),
       totalEntryCount,
+      WordCollectionStatus.pending,
+      0,
     );
-    var curEntryCount = 0;
-    for (var dictionaryId in numEntriesPerDictionaryId.keys) {
-      var numEntries = numEntriesPerDictionaryId[dictionaryId]!;
-      var words = RandomWordFetcher.getRandomWords(
-        db,
-        dictionaryId,
-        numEntries,
-      );
-      int id = 1;
-      int batchSize = 1000;
-      for (int batchStart = 0;
-          batchStart < words.length;
-          batchStart += batchSize) {
-        db.write(() {
-          for (var i = batchStart;
-              i < batchStart + batchSize && i < words.length;
-              ++i) {
-            var word = words[i];
-            db.add(WordCollectionEntry(
-              id++,
-              wordCollection.id,
-              dictionaryId,
-              word,
-              false,
-            ));
-            ++curEntryCount;
-          }
-        });
-        progress.value = curEntryCount / totalEntryCount;
-        await Future.delayed(const Duration(milliseconds: 1));
-      }
-    }
     db.write(() {
       db.add(wordCollection);
     });
-    progress.value = 1.0;
     return wordCollection;
+  }
+
+  static void _createWordCollectionEntries(Realm db, String wordCollectionId,
+      String dictionaryId, int numEntries) async {
+    var words = RandomWordFetcher.getRandomWords(
+      db,
+      dictionaryId,
+      numEntries,
+    );
+    var id = 1;
+    for (final word in words) {
+      db.add(WordCollectionEntry(
+        id++,
+        wordCollectionId,
+        dictionaryId,
+        word,
+        false,
+      ));
+    }
   }
 }

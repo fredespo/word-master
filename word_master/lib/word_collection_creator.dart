@@ -65,7 +65,7 @@ class WordCollectionCreator {
         .where((e) => e.wordCollectionId == wordCollection.id)
         .toList();
     db.write(() {
-      WordCollectionStatus.getStatus(c) = WordCollectionStatus.inProgress;
+      wordCollection.status = WordCollectionStatus.inProgress;
     });
     db.write(() {
       for (final entries in randEntries) {

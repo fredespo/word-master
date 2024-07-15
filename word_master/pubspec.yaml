@@ -1,10 +1,10 @@
 name: word_master
 description: A new Flutter project.
-publish_to: 'none'
+publish_to: "none"
 version: 0.1.0
 
 environment:
-  sdk: '>=2.19.2 <3.0.0'
+  sdk: ">=2.19.2 <3.0.0"
 
 dependencies:
   auto_size_text: ^3.0.0
@@ -12,6 +12,7 @@ dependencies:
     sdk: flutter
   http: ^0.13.6
   intl: ^0.18.1
+  path_provider: ^2.1.1
   realm: ^1.2.0
   selectable: ^0.2.11
   uuid: ^4.0.0

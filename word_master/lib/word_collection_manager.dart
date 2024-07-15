@@ -14,6 +14,7 @@ import 'package:word_master/word_collections_list.dart';
 
 import 'data_migration_widget.dart';
 import 'dictionary_data_manager.dart';
+import 'external_storage_checker.dart';
 import 'main.dart';
 
 class WordCollectionManager extends StatefulWidget {
@@ -113,6 +114,9 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
                                 DictionaryDataManager(db: widget.db),
                           ),
                         );
+                      } else if (value == 'check_external_storage') {
+                        await ExternalStorageChecker.checkExternalStorage(
+                            context);
                       }
 
                       if (value == 'create_entry_in_selected_collections') {
@@ -138,6 +142,10 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
                               const PopupMenuItem(
                                 value: 'dictionary_data',
                                 child: Text('Dictionaries'),
+                              ),
+                              const PopupMenuItem(
+                                value: 'check_external_storage',
+                                child: Text('Check External Storage'),
                               ),
                             ]
                           : [

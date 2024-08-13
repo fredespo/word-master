@@ -12,6 +12,8 @@ class WordCollectionPage extends StatefulWidget {
   final int numTotalEntries;
   final RealmResults<WordCollectionEntry> entries;
   final Realm db;
+  final Realm? externalStorageDb;
+  final Realm wordCollectionDb;
   final ValueNotifier<int> pageNumNotifier;
   final ValueNotifier<int> pageHeight;
   final ValueNotifier<bool> inMultiSelectMode;
@@ -22,6 +24,8 @@ class WordCollectionPage extends StatefulWidget {
     super.key,
     required this.numColumns,
     required this.db,
+    required this.externalStorageDb,
+    required this.wordCollectionDb,
     required this.startIndex,
     required this.endIndex,
     required this.numTotalEntries,
@@ -131,19 +135,18 @@ class _WordCollectionPageState extends State<WordCollectionPage> {
       },
       onMarkedFavorite: (wordOrPhrase) {
         if (entry != null) {
-          widget.db.write(() {
+          widget.wordCollectionDb.write(() {
             entry.isFavorite = true;
           });
         }
       },
       onUnmarkedFavorite: (wordOrPhrase) {
         if (entry != null) {
-          widget.db.write(() {
+          widget.wordCollectionDb.write(() {
             entry.isFavorite = false;
           });
         }
       },
-      db: widget.db,
       inMultiSelectMode: widget.inMultiSelectMode,
       selectedCount: widget.selectedCount,
       selected: widget.selected,
@@ -158,6 +161,7 @@ class _WordCollectionPageState extends State<WordCollectionPage> {
         return DefinitionsDialog(
           wordOrPhrase: entry.wordOrPhrase,
           db: widget.db,
+          externalStorageDb: widget.externalStorageDb,
           dictionaryId: entry.dictionaryId,
           onToggleFavorite: () {
             onFavoriteToggle(entry);
@@ -173,7 +177,7 @@ class _WordCollectionPageState extends State<WordCollectionPage> {
   }
 
   void onFavoriteToggle(WordCollectionEntry entry) {
-    widget.db.write(() {
+    widget.wordCollectionDb.write(() {
       entry.isFavorite = !entry.isFavorite;
     });
   }

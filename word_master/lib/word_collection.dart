@@ -10,4 +10,5 @@ class _WordCollection {
   late int size;
   late String status;
   late double progress;
+  late bool? isOnExternalStorage;
 }

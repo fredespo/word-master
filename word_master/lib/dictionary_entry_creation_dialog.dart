@@ -10,12 +10,14 @@ import 'dictionary_definition_creator.dart';
 
 class DictionaryEntryCreationDialog extends StatefulWidget {
   final Realm db;
+  final Realm? externalStorageDb;
   final String dictionaryId;
   final DictionaryEntry? entryToEdit;
 
   const DictionaryEntryCreationDialog({
     super.key,
     required this.db,
+    required this.externalStorageDb,
     required this.dictionaryId,
     this.entryToEdit,
   });
@@ -190,17 +192,27 @@ class _DictionaryEntryCreationDialogState
     );
 
     if (changedWord && originalWordOrPhrase != null) {
-      var entries = widget.db.all<WordCollectionEntry>().query(
-          "wordOrPhrase == \$0 AND dictionaryId == '${widget.dictionaryId}'",
-          [originalWordOrPhrase]);
-      widget.db.write(() {
-        for (var entry in entries) {
-          entry.wordOrPhrase = wordOrPhrase;
-        }
-      });
+      _changeWordCollectionEntries(widget.db, originalWordOrPhrase);
+      if (widget.externalStorageDb != null) {
+        _changeWordCollectionEntries(
+          widget.externalStorageDb!,
+          originalWordOrPhrase,
+        );
+      }
     }
 
     Navigator.of(context).pop();
+  }
+
+  _changeWordCollectionEntries(Realm db, String originalWordOrPhrase) {
+    var entries = db.all<WordCollectionEntry>().query(
+        "wordOrPhrase == \$0 AND dictionaryId == '${widget.dictionaryId}'",
+        [originalWordOrPhrase]);
+    db.write(() {
+      for (var entry in entries) {
+        entry.wordOrPhrase = wordOrPhrase;
+      }
+    });
   }
 
   _isDuplicate() {

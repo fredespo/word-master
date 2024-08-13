@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:realm/realm.dart';
 import 'package:word_master/dictionary.dart';
@@ -26,6 +28,8 @@ class MainApp extends StatefulWidget {
 
 class _MainAppState extends State<MainApp> {
   final Realm db = Database.getDbConnection();
+  String? externalStoragePath;
+  Realm? externalStorageDb;
   String migrationError = '';
   late WordCollectionCreator wordCollectionCreator;
 
@@ -33,8 +37,17 @@ class _MainAppState extends State<MainApp> {
   void initState() {
     super.initState();
     initDictionaries();
-    wordCollectionCreator = WordCollectionCreator(db);
-    WordCollectionCreator.watchForWordCollectionsToCreateInBg();
+    wordCollectionCreator = WordCollectionCreator();
+    getExternalStorageDb();
+  }
+
+  void getExternalStorageDb() async {
+    final String? extPath = await Database.getExternalStoragePath();
+    setState(() {
+      WordCollectionCreator.watchForWordCollectionsToCreateInBg(extPath);
+      externalStorageDb =
+          extPath != null ? Database.getDbFromDir(Directory(extPath)) : null;
+    });
   }
 
   void initDictionaries() {
@@ -75,6 +88,7 @@ class _MainAppState extends State<MainApp> {
       debugShowCheckedModeBanner: false,
       home: WordCollectionManager(
         db: db,
+        externalStorageDb: externalStorageDb,
         title: 'Word Master',
         onTapWordCollection:
             (BuildContext context, WordCollection wordCollection) {
@@ -83,6 +97,7 @@ class _MainAppState extends State<MainApp> {
             MaterialPageRoute(
               builder: (context) => WordCollectionTabs(
                 db: db,
+                externalStorageDb: externalStorageDb,
                 initialWordCollections: [wordCollection],
               ),
             ),
@@ -160,6 +175,7 @@ class CreateWordTableButton extends StatelessWidget {
                 numEntriesPerDictionaryId,
                 numCollections,
                 context,
+                db,
               ),
               db: db,
             );

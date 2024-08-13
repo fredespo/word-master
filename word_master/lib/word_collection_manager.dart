@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:realm/realm.dart';
+import 'package:word_master/database.dart';
 import 'package:word_master/select_all_notifier.dart';
 import 'package:word_master/word_collection.dart';
 import 'package:word_master/word_collection_creator.dart';
@@ -14,10 +15,12 @@ import 'package:word_master/word_collections_list.dart';
 
 import 'data_migration_widget.dart';
 import 'dictionary_data_manager.dart';
+import 'external_storage_checker.dart';
 import 'main.dart';
 
 class WordCollectionManager extends StatefulWidget {
   final Realm db;
+  final Realm? externalStorageDb;
   final String title;
   final Function(BuildContext, WordCollection) onTapWordCollection;
   final WordCollectionCreator wordCollectionCreator;
@@ -28,6 +31,7 @@ class WordCollectionManager extends StatefulWidget {
     required this.title,
     required this.onTapWordCollection,
     required this.wordCollectionCreator,
+    required this.externalStorageDb,
   });
 
   @override
@@ -44,6 +48,8 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
   @override
   Widget build(BuildContext context) {
     var allCollections = widget.db.all<WordCollection>();
+
+    var extCollections = widget.externalStorageDb?.all<WordCollection>();
     var completeCollections = allCollections.where((e) =>
         WordCollectionStatus.getStatus(e) == WordCollectionStatus.created);
     return Scaffold(
@@ -109,13 +115,28 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (context) =>
-                                DictionaryDataManager(db: widget.db),
+                            builder: (context) => DictionaryDataManager(
+                              db: widget.db,
+                              externalStorageDb: widget.externalStorageDb,
+                            ),
                           ),
                         );
-                      }
-
-                      if (value == 'create_entry_in_selected_collections') {
+                      } else if (value == 'check_external_storage') {
+                        await ExternalStorageChecker.checkExternalStorage(
+                            context);
+                      } else if (value == 'copy_to_external_storage') {
+                        widget.db.write(
+                          () {
+                            for (var collection in selectedCollections) {
+                              collection.status = WordCollectionStatus
+                                  .pendingCopyToExternalStorage;
+                            }
+                          },
+                        );
+                        _exitMultiSelectMode();
+                      } else if (value ==
+                          'create_entry_in_selected_collections') {
+                        // ignore: use_build_context_synchronously
                         await showDialog(
                           barrierDismissible: false,
                           context: context,
@@ -123,10 +144,8 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
                             return WordCollectionEntryCreator(
                               db: widget.db,
                               wordCollections: selectedCollections,
-                              onComplete: () => setState(() {
-                                selectedCollections.clear();
-                                inMultiSelectMode.value = false;
-                              }),
+                              onComplete: _exitMultiSelectMode,
+                              externalStorageDb: widget.externalStorageDb,
                             );
                           },
                         );
@@ -139,12 +158,23 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
                                 value: 'dictionary_data',
                                 child: Text('Dictionaries'),
                               ),
+                              const PopupMenuItem(
+                                value: 'check_external_storage',
+                                child: Text('Check External Storage'),
+                              ),
                             ]
                           : [
                               const PopupMenuItem(
                                 value: 'create_entry_in_selected_collections',
                                 child: Text('Create Entry'),
                               ),
+                              if (selectedCollections.length == 1 &&
+                                  selectedCollections[0].isOnExternalStorage !=
+                                      true)
+                                const PopupMenuItem(
+                                  value: 'copy_to_external_storage',
+                                  child: Text('Copy to External Storage'),
+                                ),
                             ];
                     },
                   ),
@@ -172,15 +202,32 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
             )
           : WordCollectionsList(
               wordCollections: allCollections,
+              externalStorageWordCollections: extCollections,
               onTap: widget.onTapWordCollection,
               onDismissed: (WordCollection wordCollection) {
-                var entries = widget.db
+                var status = WordCollectionStatus.getStatus(wordCollection);
+                if (status == WordCollectionStatus.inProgress) {
+                  return;
+                }
+
+                var id = wordCollection.id;
+
+                Realm db = Database.selectDb(
+                  wordCollection,
+                  widget.db,
+                  widget.externalStorageDb,
+                );
+
+                db.write(() {
+                  db.delete(wordCollection);
+                });
+
+                var entries = db
                     .all<WordCollectionEntry>()
-                    .query("wordCollectionId == '${wordCollection.id}'");
-                widget.db.write(() {
-                  widget.db.delete(wordCollection);
+                    .query("wordCollectionId == '$id'");
+                db.write(() {
                   for (var entry in entries) {
-                    widget.db.delete(entry);
+                    db.delete(entry);
                   }
                 });
               },
@@ -259,6 +306,13 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
     );
   }
 
+  void _exitMultiSelectMode() {
+    setState(() {
+      selectedCollections.clear();
+      inMultiSelectMode.value = false;
+    });
+  }
+
   void _openWordCollection(
     BuildContext context,
     WordCollection wordCollection,
@@ -269,6 +323,7 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
         builder: (context) => WordCollectionTabs(
           db: widget.db,
           initialWordCollections: [wordCollection],
+          externalStorageDb: widget.externalStorageDb,
         ),
       ),
     );

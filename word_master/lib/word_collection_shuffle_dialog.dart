@@ -1,6 +1,5 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:word_master/word_collection.dart';
 
 class ProgressDialog extends StatefulWidget {
   final ValueListenable<double> progress;

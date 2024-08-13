@@ -10,8 +10,13 @@ import 'dictionary_creation_dialog.dart';
 
 class DictionaryDataManager extends StatefulWidget {
   final Realm db;
+  final Realm? externalStorageDb;
 
-  const DictionaryDataManager({super.key, required this.db});
+  const DictionaryDataManager({
+    super.key,
+    required this.db,
+    required this.externalStorageDb,
+  });
 
   @override
   State<DictionaryDataManager> createState() => _DictionaryDataManagerState();
@@ -146,6 +151,7 @@ class _DictionaryDataManagerState extends State<DictionaryDataManager> {
             builder: (context) => DictionaryEditor(
               dictionary: dictionary,
               db: widget.db,
+              externalStorageDb: widget.externalStorageDb,
             ),
           ),
         ),

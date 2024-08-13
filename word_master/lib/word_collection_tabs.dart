@@ -1,8 +1,8 @@
-import 'dart:collection';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:realm/realm.dart';
+import 'package:word_master/database.dart';
 import 'package:word_master/page_jumper_activation_notifier.dart';
 import 'package:word_master/page_selection_dialog.dart';
 import 'package:word_master/random_word_fetcher.dart';
@@ -11,12 +11,10 @@ import 'package:word_master/word_collection_action_menu.dart';
 import 'package:word_master/word_collection_action_menu_selecting.dart';
 import 'package:word_master/word_collection_adder.dart';
 import 'package:word_master/word_collection_creator.dart';
-import 'package:word_master/word_collection_creator_widget.dart';
 import 'package:word_master/word_collection_entry.dart';
 import 'package:word_master/word_collection_entry_creator.dart';
 import 'package:word_master/word_collection_entry_mover.dart';
 import 'package:word_master/word_collection_manager.dart';
-import 'package:word_master/word_collection_selection_dialog.dart';
 import 'package:word_master/word_collection_shuffle_dialog.dart';
 import 'package:word_master/word_collection_shuffler.dart';
 import 'package:word_master/word_collection_tabs_title.dart';
@@ -27,11 +25,13 @@ import 'dictionary.dart';
 class WordCollectionTabs extends StatefulWidget {
   final List<WordCollection> initialWordCollections;
   final Realm db;
+  final Realm? externalStorageDb;
 
   const WordCollectionTabs({
     super.key,
     required this.initialWordCollections,
     required this.db,
+    required this.externalStorageDb,
   });
 
   @override
@@ -62,7 +62,7 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
       addWordCollection(wordCollection);
     }
     super.initState();
-    wordCollectionCreator = WordCollectionCreator(widget.db);
+    wordCollectionCreator = WordCollectionCreator();
   }
 
   @override
@@ -73,12 +73,17 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
   }
 
   void addWordCollection(WordCollection wordCollection) {
-    var entries = widget.db
+    Realm db = Database.selectDb(
+      wordCollection,
+      widget.db,
+      widget.externalStorageDb,
+    );
+    var entries = db
         .all<WordCollectionEntry>()
         .query("wordCollectionId == '${wordCollection.id}'");
 
     if (entries.isNotEmpty && entries.first.id == 0) {
-      widget.db.write(() {
+      db.write(() {
         int id = 1;
         for (var entry in entries) {
           entry.id = id++;
@@ -102,6 +107,7 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
       wordCollectionWidgets.add(
         WordCollectionWidget(
           db: widget.db,
+          wordCollectionDb: db,
           name: wordCollection.name,
           entries: entries,
           sizeNotifier: sizeNotifiers[wordCollection.id]!,
@@ -112,6 +118,7 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
           scrollOffsetNotifier: scrollOffsets[wordCollection.id]!,
           selectedCount: selectedCounts[wordCollection.id]!,
           selected: selectedEntryIds[wordCollection.id]!,
+          externalStorageDb: widget.externalStorageDb,
         ),
       );
       _tabController.dispose();
@@ -126,30 +133,33 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
 
   void handleAddRandomEntriesAction() {
     var wordCollection = getCurrentWordCollection();
-    var db = widget.db;
     showDialog(
       context: context,
       builder: (context) {
         return WordCollectionAdder(
           wordCollection: wordCollection,
-          dictionaries: db.all<Dictionary>().query("size > 0"),
+          dictionaries: widget.db.all<Dictionary>().query("size > 0"),
           onAddEntries: addRandomEntries,
-          db: db,
+          db: widget.db,
         );
       },
     );
   }
 
   void addRandomEntries(Map<String, int> numEntriesPerDictionaryId) {
-    var db = widget.db;
     var wordCollection = getCurrentWordCollection();
+    var db = Database.selectDb(
+      wordCollection,
+      widget.db,
+      widget.externalStorageDb,
+    );
     var wordCollectionSizeNotifier = sizeNotifiers[wordCollection.id]!;
     db.write(() {
       wordCollectionSizeNotifier.value = wordCollection.size;
       for (var dictionaryId in numEntriesPerDictionaryId.keys) {
         var numEntries = numEntriesPerDictionaryId[dictionaryId]!;
         var words = RandomWordFetcher.getRandomWords(
-          db,
+          widget.db,
           dictionaryId,
           numEntries,
         );
@@ -177,6 +187,7 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
           wordCollections: [wordCollection],
           wordCollectionSizeNotifier: sizeNotifiers[wordCollection.id]!,
           allowWordCollectionSelection: true,
+          externalStorageDb: widget.externalStorageDb,
         );
       },
     );
@@ -299,12 +310,12 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
     );
     await Future.delayed(const Duration(seconds: 1));
 
+    var wordCollection = getCurrentWordCollection();
     var mover = WordCollectionEntryMover(
-      widget.db,
+      Database.selectDb(wordCollection, widget.db, widget.externalStorageDb),
       10000,
       const Duration(microseconds: 1),
     );
-    var wordCollection = getCurrentWordCollection();
     mover.init(wordCollection);
 
     await Future.delayed(const Duration(seconds: 1));
@@ -324,8 +335,13 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
       ..sort((a, b) => a.id.compareTo(b.id));
 
     int batchSize = 10;
+    Realm db = Database.selectDb(
+      wordCollection,
+      widget.db,
+      widget.externalStorageDb,
+    );
     for (int i = 0; i < e.length; i += batchSize) {
-      widget.db.write(() {
+      db.write(() {
         for (int j = i; j < e.length; j++) {
           e[j].id--;
         }
@@ -342,7 +358,7 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
       ..sort((a, b) => a.id.compareTo(b.id));
 
     for (int i = 0; i < e.length; i += batchSize) {
-      widget.db.write(() {
+      db.write(() {
         for (int j = i; j < e.length; j++) {
           e[j].id++;
         }
@@ -350,7 +366,7 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
       await Future.delayed(Duration(milliseconds: 10));
     }
 
-    widget.db.write(() {
+    db.write(() {
       entry.id = randomId;
       entry.wordCollectionId = wordCollection.id;
     });
@@ -377,7 +393,12 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
     }
 
     var i = 0;
-    widget.db.write(() {
+    Realm db = Database.selectDb(
+      getCurrentWordCollection(),
+      widget.db,
+      widget.externalStorageDb,
+    );
+    db.write(() {
       for (var entry in entries) {
         entry.wordOrPhrase = shuffled[i][0];
         entry.isFavorite = shuffled[i][1];
@@ -403,14 +424,6 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
     selectedEntryIds[getCurrentWordCollection().id]!.clear();
     selectedCounts[getCurrentWordCollection().id]!.value = 0;
     selectedCount.value = 0;
-  }
-
-  WordCollectionEntry getEntry(String wordCollectionId, int entryId) {
-    return widget.db
-        .all<WordCollectionEntry>()
-        .query("wordCollectionId == '$wordCollectionId'")
-        .query("id == $entryId")
-        .first;
   }
 
   handleCloseCurrentTabAction() {
@@ -458,6 +471,7 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
         builder: (context) {
           return WordCollectionManager(
             db: widget.db,
+            externalStorageDb: widget.externalStorageDb,
             title: 'All Word Collections',
             onTapWordCollection: (context, wordCollection) {
               Navigator.pop(context);
@@ -481,11 +495,16 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
   void handleShuffleAction() async {
     ValueNotifier<double> progress = new ValueNotifier<double>(0);
     var wordCollection = getCurrentWordCollection();
+    var db = Database.selectDb(
+      wordCollection,
+      widget.db,
+      widget.externalStorageDb,
+    );
     showDialog(
         context: context,
         builder: (context) =>
             ProgressDialog(progress: progress, message: 'Shuffling'));
-    await WordCollectionShuffler.shuffle(wordCollection, progress, widget.db);
+    await WordCollectionShuffler.shuffle(wordCollection, progress, db);
 
     refreshWordCollection(wordCollection);
   }
@@ -501,12 +520,17 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
 
   _onSelectAllOnCurrentPage() {
     var wordCollection = getCurrentWordCollection();
+    var db = Database.selectDb(
+      wordCollection,
+      widget.db,
+      widget.externalStorageDb,
+    );
     var currPage = pageNumNotifiers[wordCollection.id]!.value;
-    selectPage(wordCollection.id, currPage);
+    selectPage(wordCollection.id, currPage, db);
   }
 
-  void selectPage(String wordCollectionId, int pageNum) {
-    var entries = widget.db
+  void selectPage(String wordCollectionId, int pageNum, Realm db) {
+    var entries = db
         .all<WordCollectionEntry>()
         .query("wordCollectionId == '$wordCollectionId'")
         .query("id >= \$0", [
@@ -526,8 +550,13 @@ class _WordCollectionTabsState extends State<WordCollectionTabs>
       builder: (context) {
         return PageSelectionDialog(onConfirmed: (List<int> pages) {
           var wordCollection = getCurrentWordCollection();
+          var db = Database.selectDb(
+            wordCollection,
+            widget.db,
+            widget.externalStorageDb,
+          );
           for (var page in pages) {
-            selectPage(wordCollection.id, page);
+            selectPage(wordCollection.id, page, db);
           }
         });
       },

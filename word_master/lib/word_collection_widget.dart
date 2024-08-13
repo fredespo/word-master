@@ -11,6 +11,8 @@ import 'package:word_master/page_jumper.dart';
 
 class WordCollectionWidget extends StatefulWidget {
   final Realm db;
+  final Realm? externalStorageDb;
+  final Realm wordCollectionDb;
   final String name;
   final Color bgColor = const Color.fromARGB(255, 134, 134, 134);
   final int numColumns = 6;
@@ -33,6 +35,7 @@ class WordCollectionWidget extends StatefulWidget {
   WordCollectionWidget({
     super.key,
     required this.db,
+    required this.externalStorageDb,
     required this.name,
     required this.entries,
     required this.sizeNotifier,
@@ -42,6 +45,7 @@ class WordCollectionWidget extends StatefulWidget {
     required this.scrollOffsetNotifier,
     required this.selectedCount,
     required this.selected,
+    required this.wordCollectionDb,
   }) : totalPages =
             ValueNotifier<int>((entries.length / numWordsPerPage).ceil());
 
@@ -167,6 +171,7 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
       key: index == 0 ? firstPageKey : null,
       numColumns: widget.numColumns,
       db: widget.db,
+      wordCollectionDb: widget.wordCollectionDb,
       startIndex: startIndex,
       endIndex: endIndex,
       numTotalEntries: WordCollectionWidget.numWordsPerPage,
@@ -177,6 +182,7 @@ class _WordCollectionWidgetState extends State<WordCollectionWidget> {
       inMultiSelectMode: widget.inMultiSelectMode,
       selectedCount: widget.selectedCount,
       selected: widget.selected,
+      externalStorageDb: widget.externalStorageDb,
     );
     if (index == 0) {
       SchedulerBinding.instance.addPostFrameCallback((_) {

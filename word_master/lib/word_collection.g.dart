@@ -14,14 +14,16 @@ class WordCollection extends _WordCollection
     DateTime createdOn,
     int size,
     String status,
-    double progress,
-  ) {
+    double progress, {
+    bool? isOnExternalStorage,
+  }) {
     RealmObjectBase.set(this, 'id', id);
     RealmObjectBase.set(this, 'name', name);
     RealmObjectBase.set(this, 'createdOn', createdOn);
     RealmObjectBase.set(this, 'size', size);
     RealmObjectBase.set(this, 'status', status);
     RealmObjectBase.set(this, 'progress', progress);
+    RealmObjectBase.set(this, 'isOnExternalStorage', isOnExternalStorage);
   }
 
   WordCollection._();
@@ -60,6 +62,13 @@ class WordCollection extends _WordCollection
   set progress(double value) => RealmObjectBase.set(this, 'progress', value);
 
   @override
+  bool? get isOnExternalStorage =>
+      RealmObjectBase.get<bool>(this, 'isOnExternalStorage') as bool?;
+  @override
+  set isOnExternalStorage(bool? value) =>
+      RealmObjectBase.set(this, 'isOnExternalStorage', value);
+
+  @override
   Stream<RealmObjectChanges<WordCollection>> get changes =>
       RealmObjectBase.getChanges<WordCollection>(this);
 
@@ -78,6 +87,8 @@ class WordCollection extends _WordCollection
       SchemaProperty('size', RealmPropertyType.int),
       SchemaProperty('status', RealmPropertyType.string),
       SchemaProperty('progress', RealmPropertyType.double),
+      SchemaProperty('isOnExternalStorage', RealmPropertyType.bool,
+          optional: true),
     ]);
   }
 }

@@ -11,6 +11,7 @@ class DefinitionsDialog extends StatefulWidget {
   final String? wordOrPhrase;
   final String? dictionaryId;
   final Realm? db;
+  final Realm? externalStorageDb;
   final bool canEdit;
   final Function()? onToggleFavorite;
   final ValueNotifier<bool>? isFavoriteNotifier;
@@ -24,6 +25,7 @@ class DefinitionsDialog extends StatefulWidget {
     this.canEdit = false,
     this.onToggleFavorite,
     this.isFavoriteNotifier,
+    this.externalStorageDb,
   }) : assert(
           (db != null && wordOrPhrase != null && dictionaryId != null) ||
               entry != null,
@@ -126,6 +128,7 @@ class _DefinitionsDialogState extends State<DefinitionsDialog> {
                         db: widget.db!,
                         dictionaryId: widget.dictionaryId!,
                         entryToEdit: widget.entry,
+                        externalStorageDb: widget.externalStorageDb,
                       );
                     });
               },

@@ -186,19 +186,35 @@ class _WordCollectionCardState extends State<WordCollectionCard> {
           )));
       widgets.add(const SizedBox(height: 8));
     }
-    if (status == WordCollectionStatus.pending) {
-      widgets.add(const Text("Pending"));
+
+    switch (status) {
+      case WordCollectionStatus.pending:
+        widgets.add(const Text("Pending"));
+        break;
+      case WordCollectionStatus.inProgress:
+        widgets.add(const LinearProgressIndicator());
+        break;
+      case WordCollectionStatus.copyingToExternalStorage:
+        widgets.add(const Text("Copying to external storage"));
+        widgets.add(const LinearProgressIndicator());
+        break;
+      case WordCollectionStatus.created:
+        widgets.add(Text(
+            "Created on ${createdOn.month}/${createdOn.day}/${createdOn.year}"));
+        widgets.add(const SizedBox(height: 8));
+        widgets.add(Text(
+            "with ${_numberFormat.format(widget.wordCollection.size)} entries"));
+        break;
+      case WordCollectionStatus.pendingCopyToExternalStorage:
+        widgets.add(const Text("Pending copy to external storage"));
+        break;
     }
-    if (status == WordCollectionStatus.inProgress) {
-      widgets.add(const LinearProgressIndicator());
-    }
-    if (status == WordCollectionStatus.created) {
-      widgets.add(Text(
-          "Created on ${createdOn.month}/${createdOn.day}/${createdOn.year}"));
+
+    if (widget.wordCollection.isOnExternalStorage == true) {
       widgets.add(const SizedBox(height: 8));
-      widgets.add(Text(
-          "with ${_numberFormat.format(widget.wordCollection.size)} entries"));
+      widgets.add(const Text("on external storage"));
     }
+
     return widgets;
   }
 

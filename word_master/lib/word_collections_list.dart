@@ -3,11 +3,12 @@ import 'package:realm/realm.dart';
 import 'package:word_master/select_all_notifier.dart';
 import 'package:word_master/word_collection_card.dart';
 import 'package:word_master/word_collection.dart';
-import 'package:word_master/word_collection_card_old.dart';
 import 'package:word_master/word_collection_data.dart';
+import 'package:rxdart/rxdart.dart';
 
 class WordCollectionsList extends StatelessWidget {
   final RealmResults<WordCollection> wordCollections;
+  final RealmResults<WordCollection>? externalStorageWordCollections;
   final RealmResults<WordCollectionData> oldWordCollections;
   final Function(BuildContext, WordCollection) onTap;
   final Function(BuildContext, WordCollectionData) onOldTap;
@@ -22,6 +23,7 @@ class WordCollectionsList extends StatelessWidget {
     super.key,
     required this.onTap,
     required this.wordCollections,
+    this.externalStorageWordCollections,
     required this.onDismissed,
     required this.oldWordCollections,
     required this.onOldTap,
@@ -38,8 +40,8 @@ class WordCollectionsList extends StatelessWidget {
   }
 
   Widget _buildCombinedList() {
-    return StreamBuilder<RealmResultsChanges<RealmObject>>(
-      stream: wordCollections.changes,
+    return StreamBuilder<List<WordCollection>>(
+      stream: _getWordCollectionsStream(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
           return const SizedBox(
@@ -48,55 +50,45 @@ class WordCollectionsList extends StatelessWidget {
           );
         }
         return ListView.builder(
-          itemCount: wordCollections.length + oldWordCollections.length,
+          itemCount: snapshot.data!.length,
           itemBuilder: (context, index) {
-            if (index < wordCollections.length) {
-              return Padding(
-                padding: const EdgeInsets.all(2),
-                child: WordCollectionCard(
-                  wordCollection: wordCollections[index],
-                  widthFactor: 0.7,
-                  onTap: (evaluation) {
-                    onTap(context, evaluation);
-                  },
-                  isDismissible: true,
-                  onDismissed: (WordCollection wordCollection) {
-                    onDismissed(wordCollection);
-                  },
-                  confirmDismiss: (DismissDirection dir, BuildContext context,
-                      String name) async {
-                    return await confirmDismiss(dir, context, name);
-                  },
-                  inMultiSelectMode: inMultiSelectMode,
-                  onSelected: onSelected,
-                  onDeselected: onDeselected,
-                  selectAllNotifier: selectAllNotifier,
-                ),
-              );
-            } else {
-              final oldIndex = index - wordCollections.length;
-              return Padding(
-                padding: const EdgeInsets.all(2),
-                child: OldWordCollectionCard(
-                  oldWordCollection: oldWordCollections[oldIndex],
-                  widthFactor: 0.7,
-                  onTap: (WordCollectionData oldWordCollection) {
-                    onOldTap(context, oldWordCollection);
-                  },
-                  onDismissed: (WordCollectionData oldWordCollection) {
-                    onOldDismissed(oldWordCollection);
-                  },
-                  confirmDismiss: (DismissDirection dir, BuildContext context,
-                      String name) async {
-                    return await confirmDismiss(dir, context, name);
-                  },
-                ),
-              );
-            }
+            return WordCollectionCard(
+              wordCollection: snapshot.data![index],
+              widthFactor: 0.7,
+              onTap: (evaluation) {
+                onTap(context, evaluation);
+              },
+              isDismissible: true,
+              onDismissed: (WordCollection wordCollection) {
+                onDismissed(wordCollection);
+              },
+              confirmDismiss: (DismissDirection dir, BuildContext context,
+                  String name) async {
+                return await confirmDismiss(dir, context, name);
+              },
+              inMultiSelectMode: inMultiSelectMode,
+              onSelected: onSelected,
+              onDeselected: onDeselected,
+              selectAllNotifier: selectAllNotifier,
+            );
           },
         );
       },
     );
+  }
+
+  Stream<List<WordCollection>> _getWordCollectionsStream() {
+    if (externalStorageWordCollections == null) {
+      return wordCollections.changes.map(((event) => event.results.toList()));
+    }
+    return Rx.combineLatest2(
+      wordCollections.changes.map(((event) => event.results.toList())),
+      externalStorageWordCollections!.changes
+          .map(((event) => event.results.toList())),
+      (List<WordCollection> a, List<WordCollection> b) {
+        return [...a, ...b];
+      },
+    ).map((event) => event.toList());
   }
 
   Future<bool?> confirmDismiss(direction, context, name) async {

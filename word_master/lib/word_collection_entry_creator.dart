@@ -3,6 +3,8 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:realm/realm.dart';
+import 'package:rxdart/rxdart.dart';
+import 'package:word_master/database.dart';
 import 'package:word_master/imported_dictionary.dart';
 import 'package:word_master/select_all_notifier.dart';
 import 'package:word_master/word_collection.dart';
@@ -16,6 +18,7 @@ import 'dictionary_entry.dart';
 
 class WordCollectionEntryCreator extends StatefulWidget {
   final Realm db;
+  final Realm? externalStorageDb;
   final List<WordCollection> wordCollections;
   final ValueNotifier<int>? wordCollectionSizeNotifier;
   final Function()? onComplete;
@@ -29,6 +32,7 @@ class WordCollectionEntryCreator extends StatefulWidget {
     this.wordCollectionSizeNotifier,
     this.onComplete,
     this.allowWordCollectionSelection = false,
+    required this.externalStorageDb,
   });
 
   @override
@@ -126,9 +130,8 @@ class _WordCollectionEntryCreatorState
 
   Widget _buildWordCollectionSelectionPage() {
     // select multiple word collections
-    var allWordCollections = widget.db.all<WordCollection>();
-    return StreamBuilder<RealmResultsChanges<RealmObject>>(
-        stream: allWordCollections.changes,
+    return StreamBuilder<List<WordCollection>>(
+        stream: _getWordCollectionsStream(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) {
             return const SizedBox(
@@ -136,7 +139,7 @@ class _WordCollectionEntryCreatorState
               child: Center(child: CircularProgressIndicator()),
             );
           }
-          var completeWordCollections = allWordCollections.where((e) =>
+          var completeWordCollections = snapshot.data!.where((e) =>
               WordCollectionStatus.getStatus(e) ==
               WordCollectionStatus.created);
           return SizedBox(
@@ -153,9 +156,9 @@ class _WordCollectionEntryCreatorState
                 _buildSelectAllButton(completeWordCollections),
                 Expanded(
                   child: ListView.builder(
-                    itemCount: allWordCollections.length,
+                    itemCount: snapshot.data!.length,
                     itemBuilder: (context, index) {
-                      var wordCollection = allWordCollections[index];
+                      var wordCollection = snapshot.data![index];
                       return WordCollectionCard(
                         wordCollection: wordCollection,
                         isSelectedInitially: selectedWordCollectionIds
@@ -182,6 +185,23 @@ class _WordCollectionEntryCreatorState
             ),
           );
         });
+  }
+
+  Stream<List<WordCollection>> _getWordCollectionsStream() {
+    var externalStorageWordCollections =
+        widget.externalStorageDb?.all<WordCollection>();
+    var wordCollections = widget.db.all<WordCollection>();
+    if (externalStorageWordCollections == null) {
+      return wordCollections.changes.map(((event) => event.results.toList()));
+    }
+    return Rx.combineLatest2(
+      wordCollections.changes.map(((event) => event.results.toList())),
+      externalStorageWordCollections.changes
+          .map(((event) => event.results.toList())),
+      (List<WordCollection> a, List<WordCollection> b) {
+        return [...a, ...b];
+      },
+    ).map((event) => event.toList());
   }
 
   Widget _buildEntryCreationPage() {
@@ -411,50 +431,67 @@ class _WordCollectionEntryCreatorState
     var dictionaryId = creatingNewDictionary
         ? Uuid.v4().toString()
         : selectedDictionaryDropdownItem?.dictionary?.id;
-    widget.db.write(
-      () {
-        // create dictionary (maybe)
-        if (creatingNewDictionary) {
-          var dictionary = Dictionary(dictionaryId!, newDictionaryName!);
-          widget.db.add(dictionary);
-        }
 
-        // create dictionary entry
-        DictionaryEntry entry = DictionaryEntry(
-            dictionaryId!, wordOrPhrase!, jsonEncode(definitions));
-        widget.db.add(entry);
-        widget.db.find<Dictionary>(dictionaryId)!.size++;
+    // create dictionary (maybe)
+    if (creatingNewDictionary) {
+      var dictionary = Dictionary(dictionaryId!, newDictionaryName!);
+      widget.db.add(dictionary);
+    }
 
-        // add to word collections
-        var collections = widget.allowWordCollectionSelection
-            ? widget.db
-                .all<WordCollection>()
-                .where((e) => selectedWordCollectionIds.contains(e.id))
-            : widget.wordCollections;
-        for (var wordCollection in collections) {
-          int randomId = Random().nextInt(wordCollection.size) + 1;
-          var existingEntries = widget.db
-              .all<WordCollectionEntry>()
-              .query("wordCollectionId == '${wordCollection.id}'")
-              .query("id >= \$0", [randomId]).toList();
-          for (var entry in existingEntries) {
-            entry.id++;
-          }
-          var wordCollectionEntry = WordCollectionEntry(
-            randomId,
-            wordCollection.id,
-            dictionaryId,
-            wordOrPhrase!,
-            false,
-          );
-          widget.db.add(wordCollectionEntry);
-          wordCollection.size++;
+    // create dictionary entry
+    DictionaryEntry entry =
+        DictionaryEntry(dictionaryId!, wordOrPhrase!, jsonEncode(definitions));
+    widget.db.write(() {
+      widget.db.add(entry);
+      widget.db.find<Dictionary>(dictionaryId)!.size++;
+    });
+
+    // add to word collections
+    var collections = widget.allowWordCollectionSelection
+        ? widget.db
+            .all<WordCollection>()
+            .where((e) => selectedWordCollectionIds.contains(e.id))
+        : widget.wordCollections;
+    if (widget.allowWordCollectionSelection &&
+        widget.externalStorageDb != null) {
+      var externalCollections = widget.externalStorageDb!
+          .all<WordCollection>()
+          .where((e) => selectedWordCollectionIds.contains(e.id));
+      collections =
+          [collections, externalCollections].expand((element) => element);
+    }
+
+    for (var wordCollection in collections) {
+      Realm db = Database.selectDb(
+        wordCollection,
+        widget.db,
+        widget.externalStorageDb,
+      );
+      int randomId = Random().nextInt(wordCollection.size) + 1;
+      var existingEntries = db
+          .all<WordCollectionEntry>()
+          .query("wordCollectionId == '${wordCollection.id}'")
+          .query("id >= \$0", [randomId]).toList();
+      db.write(() {
+        for (var entry in existingEntries) {
+          entry.id++;
         }
-        if (widget.wordCollectionSizeNotifier != null) {
-          widget.wordCollectionSizeNotifier!.value++;
-        }
-      },
-    );
+        var wordCollectionEntry = WordCollectionEntry(
+          randomId,
+          wordCollection.id,
+          dictionaryId,
+          wordOrPhrase!,
+          false,
+        );
+        db.add(wordCollectionEntry);
+        wordCollection.size++;
+      });
+    }
+
+    if (widget.wordCollectionSizeNotifier != null) {
+      widget.wordCollectionSizeNotifier!.value++;
+    }
+
     if (widget.onComplete != null) {
       widget.onComplete!();
     }

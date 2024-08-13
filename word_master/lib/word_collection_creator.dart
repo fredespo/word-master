@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'dart:isolate';
 import 'dart:ui';
 
@@ -12,21 +13,27 @@ import 'package:word_master/word_collection_status.dart';
 import 'database.dart';
 
 class WordCollectionCreator {
-  final Realm db;
+  WordCollectionCreator();
 
-  WordCollectionCreator(this.db);
-
-  static watchForWordCollectionsToCreateInBg() {
+  static watchForWordCollectionsToCreateInBg(String? extDir) {
     RootIsolateToken token = RootIsolateToken.instance!;
-    Isolate.spawn(_createWordCollections, token);
+    Isolate.spawn((t) => _createWordCollections(t, extDir), token);
   }
 
-  static Future<void> _createWordCollections(RootIsolateToken token) async {
+  static Future<void> _createWordCollections(
+    RootIsolateToken token,
+    String? extDir,
+  ) async {
     Realm db = Database.getDbConnection();
+    Realm? externalStorageDb =
+        extDir != null ? Database.getDbFromDir(Directory(extDir)) : null;
+
     final leftover = db
         .all<WordCollection>()
         .where((c) =>
-            WordCollectionStatus.getStatus(c) != WordCollectionStatus.created)
+            WordCollectionStatus.getStatus(c) == WordCollectionStatus.pending ||
+            WordCollectionStatus.getStatus(c) ==
+                WordCollectionStatus.inProgress)
         .toList();
     for (final collection in leftover) {
       if (isOrphaned(collection, db)) {
@@ -37,18 +44,51 @@ class WordCollectionCreator {
     }
 
     while (true) {
-      try {
-        final wordCollection = db
-            .all<WordCollection>()
-            .where((c) =>
-                WordCollectionStatus.getStatus(c) ==
-                WordCollectionStatus.pending)
-            .first;
-        createEntries(wordCollection, db);
-      } on StateError {
-        await Future.delayed(const Duration(seconds: 5));
-        continue;
+      final pendingWordCollection = getNextPendingWordCollection(db);
+      if (pendingWordCollection != null) {
+        createEntries(pendingWordCollection, db);
       }
+
+      final copyToExternal = getNextToCopyToExternal(
+        db,
+        externalStorageDb,
+      );
+      if (copyToExternal != null) {
+        _copyToExternalStorage(copyToExternal, db, externalStorageDb!);
+      }
+
+      if (pendingWordCollection == null && copyToExternal == null) {
+        await Future.delayed(const Duration(seconds: 5));
+      }
+    }
+  }
+
+  static WordCollection? getNextPendingWordCollection(Realm db) {
+    try {
+      return db.all<WordCollection>().firstWhere((c) =>
+          WordCollectionStatus.getStatus(c) == WordCollectionStatus.pending ||
+          WordCollectionStatus.getStatus(c) == WordCollectionStatus.inProgress);
+    } on StateError {
+      return null;
+    }
+  }
+
+  static WordCollection? getNextToCopyToExternal(
+    Realm internalStorageDb,
+    Realm? externalStorageDb,
+  ) {
+    if (externalStorageDb == null) {
+      return null;
+    }
+
+    try {
+      return internalStorageDb.all<WordCollection>().firstWhere((c) =>
+          WordCollectionStatus.getStatus(c) ==
+              WordCollectionStatus.pendingCopyToExternalStorage ||
+          WordCollectionStatus.getStatus(c) ==
+              WordCollectionStatus.copyingToExternalStorage);
+    } on StateError {
+      return null;
     }
   }
 
@@ -60,15 +100,16 @@ class WordCollectionCreator {
   }
 
   static void createEntries(WordCollection wordCollection, Realm db) {
+    db.write(() {
+      wordCollection.status = WordCollectionStatus.inProgress;
+    });
+
     final randEntries = db
         .all<WordCollectionAddRandEntriesJob>()
         .where((e) => e.wordCollectionId == wordCollection.id)
         .toList();
-    db.write(() {
-      wordCollection.status = WordCollectionStatus.inProgress;
-    });
-    db.write(() {
-      for (final entries in randEntries) {
+    for (final entries in randEntries) {
+      db.write(() {
         _createWordCollectionEntries(
           db,
           wordCollection.id,
@@ -76,8 +117,54 @@ class WordCollectionCreator {
           entries.numEntries,
         );
         db.delete(entries);
-      }
+      });
+    }
+
+    db.write(() {
       wordCollection.status = WordCollectionStatus.created;
+    });
+  }
+
+  static void _copyToExternalStorage(
+    WordCollection collection,
+    Realm internalStorageDb,
+    Realm externalStorageDb,
+  ) {
+    internalStorageDb.write(() {
+      collection.status = WordCollectionStatus.copyingToExternalStorage;
+    });
+
+    var entries = internalStorageDb
+        .all<WordCollectionEntry>()
+        .query("wordCollectionId == '${collection.id}'")
+        .toList();
+    WordCollection newCollection = WordCollection(
+      Uuid.v4().toString(),
+      collection.name,
+      collection.createdOn,
+      collection.size,
+      WordCollectionStatus.created,
+      entries.length.toDouble(),
+    );
+    newCollection.isOnExternalStorage = true;
+
+    externalStorageDb.write(() {
+      for (final entry in entries) {
+        externalStorageDb.add(
+          WordCollectionEntry(
+            entry.id,
+            newCollection.id,
+            entry.dictionaryId,
+            entry.wordOrPhrase,
+            entry.isFavorite,
+          ),
+        );
+      }
+      externalStorageDb.add(newCollection);
+    });
+
+    internalStorageDb.write(() {
+      collection.status = WordCollectionStatus.created;
     });
   }
 
@@ -85,12 +172,14 @@ class WordCollectionCreator {
       String name,
       Map<String, int> numEntriesPerDictionaryId,
       int numCollections,
-      BuildContext context) async {
+      BuildContext context,
+      Realm db) async {
     for (var i = 0; i < numCollections; ++i) {
       var curName = numCollections > 1 ? '$name ${i + 1}' : name;
       var wordCollection = _createWordCollectionWithoutEntries(
         curName,
         numEntriesPerDictionaryId,
+        db,
       );
       db.write(() {
         for (final entries in numEntriesPerDictionaryId.entries) {
@@ -107,6 +196,7 @@ class WordCollectionCreator {
   WordCollection _createWordCollectionWithoutEntries(
     String name,
     Map<String, int> numEntriesPerDictionaryId,
+    Realm db,
   ) {
     var totalEntryCount =
         numEntriesPerDictionaryId.values.reduce((a, b) => a + b);
@@ -124,8 +214,12 @@ class WordCollectionCreator {
     return wordCollection;
   }
 
-  static void _createWordCollectionEntries(Realm db, String wordCollectionId,
-      String dictionaryId, int numEntries) async {
+  static void _createWordCollectionEntries(
+    Realm db,
+    String wordCollectionId,
+    String dictionaryId,
+    int numEntries,
+  ) async {
     var words = RandomWordFetcher.getRandomWords(
       db,
       dictionaryId,

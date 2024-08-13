@@ -11,7 +11,6 @@ class WordCollectionPageCell extends StatefulWidget {
   final Function(WordCollectionEntry) showDefinitions;
   final Function(String) onMarkedFavorite;
   final Function(String) onUnmarkedFavorite;
-  final Realm db;
   final controller = StreamController<RealmObject>();
   final ValueNotifier<bool> inMultiSelectMode;
   final ValueNotifier<int> selectedCount;
@@ -24,7 +23,6 @@ class WordCollectionPageCell extends StatefulWidget {
     required this.onMarkedFavorite,
     required this.onUnmarkedFavorite,
     required this.entry,
-    required this.db,
     required this.inMultiSelectMode,
     required this.selectedCount,
     required this.selected,

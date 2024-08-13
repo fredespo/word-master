@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:realm/realm.dart';
 import 'package:word_master/word_collection.dart';
 import 'package:word_master/word_collection_add_rand_entries_job.dart';
@@ -7,6 +9,7 @@ import 'package:word_master/word_collection_entry.dart';
 import 'dictionary.dart';
 import 'dictionary_entry.dart';
 import 'imported_dictionary.dart';
+import 'package:path_provider/path_provider.dart';
 
 class Database {
   static Realm getDbConnection() {
@@ -20,7 +23,58 @@ class Database {
         WordCollection.schema,
         WordCollectionAddRandEntriesJob.schema
       ],
-      schemaVersion: 12,
+      schemaVersion: 13,
     ));
+  }
+
+  static Future<String?> getExternalStoragePath() async {
+    if (!Platform.isAndroid) {
+      return null;
+    }
+
+    try {
+      var dir = await getExternalStorageDirectory();
+      if (dir == null) return null;
+      return dir.path;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static Future<Realm?> getExternalStorageDb() async {
+    var extPath = await getExternalStoragePath();
+    if (extPath == null) return null;
+    return getDbFromDir(Directory(extPath));
+  }
+
+  static Realm? getDbFromDir(Directory dir) {
+    try {
+      return Realm(Configuration.local(
+        [
+          DictionaryEntry.schema,
+          WordCollectionData.schema,
+          Dictionary.schema,
+          ImportedDictionary.schema,
+          WordCollectionEntry.schema,
+          WordCollection.schema,
+          WordCollectionAddRandEntriesJob.schema
+        ],
+        schemaVersion: 13,
+        path: '${dir.path}/word_master.realm',
+      ));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  static Realm selectDb(
+    WordCollection wordCollection,
+    Realm internalStorageDb,
+    Realm? externalStorageDb,
+  ) {
+    return wordCollection.isOnExternalStorage == true &&
+            externalStorageDb != null
+        ? externalStorageDb
+        : internalStorageDb;
   }
 }

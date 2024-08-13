@@ -10,11 +10,13 @@ import 'dictionary_entry_creation_dialog.dart';
 class DictionaryEditor extends StatefulWidget {
   final Dictionary dictionary;
   final Realm db;
+  final Realm? externalStorageDb;
 
   const DictionaryEditor({
     super.key,
     required this.dictionary,
     required this.db,
+    required this.externalStorageDb,
   });
 
   @override
@@ -65,6 +67,7 @@ class _DictionaryEditorState extends State<DictionaryEditor> {
                         return DictionaryEntryCreationDialog(
                           db: widget.db,
                           dictionaryId: widget.dictionary.id,
+                          externalStorageDb: widget.externalStorageDb,
                         );
                       }),
                 );

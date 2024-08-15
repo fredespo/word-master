@@ -23,7 +23,7 @@ class Database {
         WordCollection.schema,
         WordCollectionAddRandEntriesJob.schema
       ],
-      schemaVersion: 13,
+      schemaVersion: 14,
     ));
   }
 
@@ -59,7 +59,7 @@ class Database {
           WordCollection.schema,
           WordCollectionAddRandEntriesJob.schema
         ],
-        schemaVersion: 13,
+        schemaVersion: 14,
         path: '${dir.path}/word_master.realm',
       ));
     } catch (e) {

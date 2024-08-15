@@ -208,6 +208,21 @@ class _WordCollectionCardState extends State<WordCollectionCard> {
       case WordCollectionStatus.pendingCopyToExternalStorage:
         widgets.add(const Text("Pending copy to external storage"));
         break;
+      case WordCollectionStatus.errored:
+        widgets.add(const Text(
+          "ERROR",
+          style: TextStyle(color: Colors.red),
+        ));
+        widgets.add(ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 100),
+          child: SingleChildScrollView(
+            child: Text(
+              widget.wordCollection.errorMessage,
+              style: const TextStyle(color: Colors.red),
+            ),
+          ),
+        ));
+        break;
     }
 
     if (widget.wordCollection.isOnExternalStorage == true) {

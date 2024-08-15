@@ -11,4 +11,5 @@ class _WordCollection {
   late String status;
   late double progress;
   late bool? isOnExternalStorage;
+  late String errorMessage = "";
 }

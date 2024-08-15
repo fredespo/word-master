@@ -28,37 +28,84 @@ class WordCollectionCreator {
     Realm? externalStorageDb =
         extDir != null ? Database.getDbFromDir(Directory(extDir)) : null;
 
-    final leftover = db
-        .all<WordCollection>()
-        .where((c) =>
-            WordCollectionStatus.getStatus(c) == WordCollectionStatus.pending ||
-            WordCollectionStatus.getStatus(c) ==
-                WordCollectionStatus.inProgress)
-        .toList();
-    for (final collection in leftover) {
-      if (isOrphaned(collection, db)) {
-        db.write(() => db.delete(collection));
-      } else {
-        createEntries(collection, db);
-      }
-    }
+    handleLeftover(db);
 
     while (true) {
-      final pendingWordCollection = getNextPendingWordCollection(db);
-      if (pendingWordCollection != null) {
-        createEntries(pendingWordCollection, db);
+      final pendingWordCollection = createOnInternalStorage(db);
+      final copyToExternal = createOnExternalStorage(db, externalStorageDb);
+      if (pendingWordCollection == null && copyToExternal == null) {
+        await Future.delayed(const Duration(seconds: 5));
       }
+    }
+  }
 
-      final copyToExternal = getNextToCopyToExternal(
+  static WordCollection? createOnInternalStorage(Realm db) {
+    WordCollection? pendingWordCollection;
+    try {
+      pendingWordCollection = getNextPendingWordCollection(db);
+    } catch (e) {
+      debugPrint(
+          "Could not get next word collection to create on internal storage: $e");
+    }
+
+    if (pendingWordCollection != null) {
+      try {
+        createEntries(pendingWordCollection, db);
+      } catch (e) {
+        markCollectionAsErrored(pendingWordCollection, db, e.toString());
+      }
+    }
+    return pendingWordCollection;
+  }
+
+  static WordCollection? createOnExternalStorage(
+    Realm db,
+    Realm? externalStorageDb,
+  ) {
+    WordCollection? copyToExternal;
+    try {
+      copyToExternal = getNextToCopyToExternal(
         db,
         externalStorageDb,
       );
-      if (copyToExternal != null) {
-        _copyToExternalStorage(copyToExternal, db, externalStorageDb!);
-      }
+    } catch (e) {
+      debugPrint("Could not get next collection to copy to external: $e");
+    }
 
-      if (pendingWordCollection == null && copyToExternal == null) {
-        await Future.delayed(const Duration(seconds: 5));
+    if (copyToExternal != null) {
+      try {
+        _copyToExternalStorage(copyToExternal, db, externalStorageDb!);
+      } catch (e) {
+        debugPrint("Could not copy to external storage: $e");
+      }
+    }
+    return copyToExternal;
+  }
+
+  static void handleLeftover(Realm db) {
+    List<WordCollection> leftover = [];
+    try {
+      leftover = db
+          .all<WordCollection>()
+          .where((c) =>
+              WordCollectionStatus.getStatus(c) ==
+                  WordCollectionStatus.pending ||
+              WordCollectionStatus.getStatus(c) ==
+                  WordCollectionStatus.inProgress)
+          .toList();
+    } catch (e) {
+      debugPrint("Could not get leftover collections: $e");
+    }
+
+    for (final collection in leftover) {
+      try {
+        if (isOrphaned(collection, db)) {
+          db.write(() => db.delete(collection));
+        } else {
+          createEntries(collection, db);
+        }
+      } catch (e) {
+        markCollectionAsErrored(collection, db, e.toString());
       }
     }
   }
@@ -104,6 +151,14 @@ class WordCollectionCreator {
       wordCollection.status = WordCollectionStatus.inProgress;
     });
 
+    if (wordCollection.name.startsWith("error")) {
+      throw Exception("Word collection name starts with error");
+    }
+    if (wordCollection.name.startsWith("longerror")) {
+      throw Exception(
+          "Word collection name starts with longerror. fdjaslfj dsa;fhjsd gfdsg fdsg dsgjfd sgfdls gjdfslg jfldsa jflkdsa jfsalkf j ljdslkalkg jsaklfg jdslkg jsaklf; jklf j ;fgjiewa godsfk;ljfla gfjfds gijlrk;raeiog fdsjg;lf dsgkdfls jfgl jklfds jgklfd jsg;k jdfs;kl;g; jfdslk;kgfdsj gklfds; jg klfds jg jior egijlkfd; jgio ;jrlkgj ;i ljfkdsjgfdls jglkfds jglsdjgi ore;alkgj fdislkj;s egjkfd jg;flk;ds jg f irea ;gjlkfdsj gior;dlsjg; iro;djgisdlfjgksgirod gj;ksdffjgklsg;dflig jriosg;fdksgjifodslig jirsdlfjg ;kfds jgirosd jgirlds jgifdskgjf;dslirsjgfdlksir jg;krldf gjirdfs jgilkdsjgfldsjgkdsgjfkdlsgjdflsgj jir sj;gdf jgiorlk;gfidsl gjkrsjgo;il fkdjsgi;o;r esgfdjsk;fj g;i;rsjlkg fdslk;j gifdsgreslkkjgkfldsjgidsf vfisfklds jgflds ifjsl;gjfkdsl gjrigrjg klfds; jgfsdgfdkinlfs;knbfd;skngdf sjjfjjfj fj fjfjfjlkfzjglksdjjjjjjjjjjjjjjjjjj jjjjjjjjjjjjjjjj jjjjjjjjjjjjjjjjjjjjjjjjjjj jjjjjjjjjjjjjjjjjjjj jjjjjjjjjjjjjjjjjjjjjjjjj jjjjjjjjjjjjjjjjjjjj jjjjjjjjjjjjjjjjjjjjjj jjjjjjjjjjjjjjjjjjjjjj jjjjjjjjjjjjjjjjjjjjj jjjjjjjjjjjjjjjjjjjj jfdlg ds;flg dfhsjkg hfdsiogeau gpnlf;kdsjgifdosug dflks gjdios g d fajgoiera;gfdsg dfsii; jg;dfklsgj fdiosg dsgj reagjk;dr s g;fdlis gids gjfdls;sgfds gfdjsk gjfids gdfjs gfdsgi ;fdjgk dsig;jfd;sl gjfdsklg kljfdsg hfdli;kg fdjskghsoi jio");
+    }
+
     final randEntries = db
         .all<WordCollectionAddRandEntriesJob>()
         .where((e) => e.wordCollectionId == wordCollection.id)
@@ -134,38 +189,40 @@ class WordCollectionCreator {
       collection.status = WordCollectionStatus.copyingToExternalStorage;
     });
 
-    var entries = internalStorageDb
-        .all<WordCollectionEntry>()
-        .query("wordCollectionId == '${collection.id}'")
-        .toList();
-    WordCollection newCollection = WordCollection(
-      Uuid.v4().toString(),
-      collection.name,
-      collection.createdOn,
-      collection.size,
-      WordCollectionStatus.created,
-      entries.length.toDouble(),
-    );
-    newCollection.isOnExternalStorage = true;
+    try {
+      var entries = internalStorageDb
+          .all<WordCollectionEntry>()
+          .query("wordCollectionId == '${collection.id}'")
+          .toList();
+      WordCollection newCollection = WordCollection(
+        Uuid.v4().toString(),
+        collection.name,
+        collection.createdOn,
+        collection.size,
+        WordCollectionStatus.created,
+        entries.length.toDouble(),
+      );
+      newCollection.isOnExternalStorage = true;
 
-    externalStorageDb.write(() {
-      for (final entry in entries) {
-        externalStorageDb.add(
-          WordCollectionEntry(
-            entry.id,
-            newCollection.id,
-            entry.dictionaryId,
-            entry.wordOrPhrase,
-            entry.isFavorite,
-          ),
-        );
-      }
-      externalStorageDb.add(newCollection);
-    });
-
-    internalStorageDb.write(() {
-      collection.status = WordCollectionStatus.created;
-    });
+      externalStorageDb.write(() {
+        for (final entry in entries) {
+          externalStorageDb.add(
+            WordCollectionEntry(
+              entry.id,
+              newCollection.id,
+              entry.dictionaryId,
+              entry.wordOrPhrase,
+              entry.isFavorite,
+            ),
+          );
+        }
+        externalStorageDb.add(newCollection);
+      });
+    } finally {
+      internalStorageDb.write(() {
+        collection.status = WordCollectionStatus.created;
+      });
+    }
   }
 
   void createWordCollection(
@@ -234,6 +291,21 @@ class WordCollectionCreator {
         word,
         false,
       ));
+    }
+  }
+
+  static void markCollectionAsErrored(
+    WordCollection collection,
+    Realm db,
+    String message,
+  ) {
+    try {
+      db.write(() {
+        collection.status = WordCollectionStatus.errored;
+        collection.errorMessage = message;
+      });
+    } catch (e) {
+      debugPrint("Could not mark collection ${collection.name} as errored: $e");
     }
   }
 }

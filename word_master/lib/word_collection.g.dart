@@ -8,6 +8,8 @@ part of 'word_collection.dart';
 
 class WordCollection extends _WordCollection
     with RealmEntity, RealmObjectBase, RealmObject {
+  static var _defaultsSet = false;
+
   WordCollection(
     String id,
     String name,
@@ -16,7 +18,13 @@ class WordCollection extends _WordCollection
     String status,
     double progress, {
     bool? isOnExternalStorage,
+    String errorMessage = "",
   }) {
+    if (!_defaultsSet) {
+      _defaultsSet = RealmObjectBase.setDefaults<WordCollection>({
+        'errorMessage': "",
+      });
+    }
     RealmObjectBase.set(this, 'id', id);
     RealmObjectBase.set(this, 'name', name);
     RealmObjectBase.set(this, 'createdOn', createdOn);
@@ -24,6 +32,7 @@ class WordCollection extends _WordCollection
     RealmObjectBase.set(this, 'status', status);
     RealmObjectBase.set(this, 'progress', progress);
     RealmObjectBase.set(this, 'isOnExternalStorage', isOnExternalStorage);
+    RealmObjectBase.set(this, 'errorMessage', errorMessage);
   }
 
   WordCollection._();
@@ -69,6 +78,13 @@ class WordCollection extends _WordCollection
       RealmObjectBase.set(this, 'isOnExternalStorage', value);
 
   @override
+  String get errorMessage =>
+      RealmObjectBase.get<String>(this, 'errorMessage') as String;
+  @override
+  set errorMessage(String value) =>
+      RealmObjectBase.set(this, 'errorMessage', value);
+
+  @override
   Stream<RealmObjectChanges<WordCollection>> get changes =>
       RealmObjectBase.getChanges<WordCollection>(this);
 
@@ -89,6 +105,7 @@ class WordCollection extends _WordCollection
       SchemaProperty('progress', RealmPropertyType.double),
       SchemaProperty('isOnExternalStorage', RealmPropertyType.bool,
           optional: true),
+      SchemaProperty('errorMessage', RealmPropertyType.string),
     ]);
   }
 }

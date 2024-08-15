@@ -7,6 +7,7 @@ class WordCollectionStatus {
   static const String pendingCopyToExternalStorage =
       'pending_copy_to_external_storage';
   static const String copyingToExternalStorage = 'copying_to_external_storage';
+  static const String errored = 'errored';
 
   static String getStatus(WordCollection wordCollection) {
     if (wordCollection.status.isEmpty) {

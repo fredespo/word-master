@@ -133,15 +133,37 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
                               WordCollectionStatus.markedForDeletion);
                         }
                       } else if (value == 'copy_to_external_storage') {
-                        widget.db.write(
-                          () {
-                            for (var collection in selectedCollections) {
-                              collection.status = WordCollectionStatus
-                                  .pendingCopyToExternalStorage;
-                            }
-                          },
-                        );
-                        _exitMultiSelectMode();
+                        try {
+                          widget.db.write(
+                            () {
+                              for (var collection in selectedCollections) {
+                                collection.status = WordCollectionStatus
+                                    .pendingCopyToExternalStorage;
+                              }
+                            },
+                          );
+                        } catch (e) {
+                          showDialog(
+                            context: context,
+                            builder: (context) {
+                              return AlertDialog(
+                                title: const Text('Error'),
+                                content: Text(
+                                    "❌ Could not copy to external storage: $e"),
+                                actions: <Widget>[
+                                  TextButton(
+                                    onPressed: () {
+                                      Navigator.of(context).pop();
+                                    },
+                                    child: const Text('OK'),
+                                  ),
+                                ],
+                              );
+                            },
+                          );
+                        } finally {
+                          _exitMultiSelectMode();
+                        }
                       } else if (value ==
                           'create_entry_in_selected_collections') {
                         // ignore: use_build_context_synchronously

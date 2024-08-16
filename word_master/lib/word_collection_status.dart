@@ -8,6 +8,7 @@ class WordCollectionStatus {
       'pending_copy_to_external_storage';
   static const String copyingToExternalStorage = 'copying_to_external_storage';
   static const String errored = 'errored';
+  static const String markedForDeletion = 'marked_for_deletion';
 
   static String getStatus(WordCollection wordCollection) {
     if (wordCollection.status.isEmpty) {

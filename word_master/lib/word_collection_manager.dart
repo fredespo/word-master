@@ -47,7 +47,9 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
 
   @override
   Widget build(BuildContext context) {
-    var allCollections = widget.db.all<WordCollection>();
+    var allCollections = widget.db
+        .all<WordCollection>()
+        .query("status != \"${WordCollectionStatus.markedForDeletion}\"");
 
     var extCollections = widget.externalStorageDb?.all<WordCollection>();
     var completeCollections = allCollections.where((e) =>
@@ -124,6 +126,12 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
                       } else if (value == 'check_external_storage') {
                         await ExternalStorageChecker.checkExternalStorage(
                             context);
+                      } else if (value == 'cancel_all_pending') {
+                        var pendingInternal = getPending(widget.db);
+                        for (WordCollection wordCollection in pendingInternal) {
+                          widget.db.write(() => wordCollection.status =
+                              WordCollectionStatus.markedForDeletion);
+                        }
                       } else if (value == 'copy_to_external_storage') {
                         widget.db.write(
                           () {
@@ -161,6 +169,10 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
                               const PopupMenuItem(
                                 value: 'check_external_storage',
                                 child: Text('Check External Storage'),
+                              ),
+                              const PopupMenuItem(
+                                value: 'cancel_all_pending',
+                                child: Text('Cancel All Pending'),
                               ),
                             ]
                           : [
@@ -304,6 +316,13 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
               }),
             ),
     );
+  }
+
+  List<WordCollection> getPending(Realm db) {
+    return db
+        .all<WordCollection>()
+        .query("status == \"${WordCollectionStatus.pending}\"")
+        .toList();
   }
 
   void _exitMultiSelectMode() {

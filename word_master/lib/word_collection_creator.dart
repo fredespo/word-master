@@ -33,7 +33,10 @@ class WordCollectionCreator {
     while (true) {
       final pendingWordCollection = createOnInternalStorage(db);
       final copyToExternal = createOnExternalStorage(db, externalStorageDb);
-      if (pendingWordCollection == null && copyToExternal == null) {
+      final deleted = deleteOnInternalStorage(db);
+      if (pendingWordCollection == null &&
+          copyToExternal == null &&
+          deleted == null) {
         await Future.delayed(const Duration(seconds: 5));
       }
     }
@@ -82,6 +85,22 @@ class WordCollectionCreator {
     return copyToExternal;
   }
 
+  static WordCollection? deleteOnInternalStorage(Realm db) {
+    WordCollection? toDelete = getNextToDelete(db);
+    if (toDelete != null) {
+      var id = toDelete.id;
+      db.write(() {
+        var entries =
+            db.all<WordCollectionEntry>().query("wordCollectionId == '$id'");
+        for (var entry in entries) {
+          db.delete(entry);
+        }
+        db.delete(toDelete);
+      });
+    }
+    return toDelete;
+  }
+
   static void handleLeftover(Realm db) {
     List<WordCollection> leftover = [];
     try {
@@ -107,6 +126,16 @@ class WordCollectionCreator {
       } catch (e) {
         markCollectionAsErrored(collection, db, e.toString());
       }
+    }
+  }
+
+  static WordCollection? getNextToDelete(Realm db) {
+    try {
+      return db.all<WordCollection>().firstWhere((c) =>
+          WordCollectionStatus.getStatus(c) ==
+          WordCollectionStatus.markedForDeletion);
+    } on StateError {
+      return null;
     }
   }
 

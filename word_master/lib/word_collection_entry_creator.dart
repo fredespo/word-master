@@ -190,7 +190,9 @@ class _WordCollectionEntryCreatorState
   Stream<List<WordCollection>> _getWordCollectionsStream() {
     var externalStorageWordCollections =
         widget.externalStorageDb?.all<WordCollection>();
-    var wordCollections = widget.db.all<WordCollection>();
+    var wordCollections = widget.db
+        .all<WordCollection>()
+        .query("status != \"${WordCollectionStatus.markedForDeletion}\"");
     if (externalStorageWordCollections == null) {
       return wordCollections.changes.map(((event) => event.results.toList()));
     }

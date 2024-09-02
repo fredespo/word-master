@@ -8,21 +8,22 @@ environment:
 
 dependencies:
   auto_size_text: ^3.0.0
+  external_path: ^2.0.1
   flutter:
     sdk: flutter
-  http: ^0.13.6
-  intl: ^0.18.1
+  http: ^1.2.2
+  intl: ^0.19.0
   path_provider: ^2.1.1
-  realm: ^1.2.0
+  realm: ^3.4.1
   rxdart: ^0.28.0
-  selectable: ^0.2.11
+  selectable: ^0.3.2
   uuid: ^4.0.0
   visibility_detector: ^0.4.0+2
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  flutter_lints: ^2.0.0
+  flutter_lints: ^4.0.0
 
 flutter:
   uses-material-design: true

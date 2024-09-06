@@ -86,9 +86,6 @@ class _MainAppState extends State<MainApp> {
     }
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: false,
-      ),
       home: WordCollectionManager(
         db: db,
         externalStorageDb: externalStorageDb,

@@ -86,19 +86,24 @@ class WordCollectionCreator {
   }
 
   static WordCollection? deleteOnInternalStorage(Realm db) {
-    WordCollection? toDelete = getNextToDelete(db);
-    if (toDelete != null) {
-      var id = toDelete.id;
-      db.write(() {
-        var entries =
-            db.all<WordCollectionEntry>().query("wordCollectionId == '$id'");
-        for (var entry in entries) {
-          db.delete(entry);
-        }
-        db.delete(toDelete);
-      });
+    try {
+      WordCollection? toDelete = getNextToDelete(db);
+      if (toDelete != null) {
+        var id = toDelete.id;
+        db.write(() {
+          var entries =
+              db.all<WordCollectionEntry>().query("wordCollectionId == '$id'");
+          for (var entry in entries) {
+            db.delete(entry);
+          }
+          db.delete(toDelete);
+        });
+      }
+      return toDelete;
+    } catch (e) {
+      debugPrint("Could not delete: $e");
+      return null;
     }
-    return toDelete;
   }
 
   static void handleLeftover(Realm db) {

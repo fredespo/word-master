@@ -15,7 +15,6 @@ import 'package:word_master/word_collections_list.dart';
 
 import 'data_migration_widget.dart';
 import 'dictionary_data_manager.dart';
-import 'external_storage_checker.dart';
 import 'main.dart';
 
 class WordCollectionManager extends StatefulWidget {
@@ -123,9 +122,6 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
                             ),
                           ),
                         );
-                      } else if (value == 'check_external_storage') {
-                        await ExternalStorageChecker.checkExternalStorage(
-                            context);
                       } else if (value == 'cancel_all_pending') {
                         var pendingInternal = getPending(widget.db);
                         for (WordCollection wordCollection in pendingInternal) {
@@ -179,6 +175,34 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
                             );
                           },
                         );
+                      } else if (value == 'check_storage_paths') {
+                        Map<String, String> paths =
+                            await Database.getStoragePaths();
+                        // ignore: use_build_context_synchronously
+                        showDialog(
+                          context: context,
+                          builder: (context) {
+                            return AlertDialog(
+                              title: const Text('Storage Paths'),
+                              content: Column(
+                                children: paths.entries
+                                    .map((e) => ListTile(
+                                          title: Text(e.key),
+                                          subtitle: Text(e.value),
+                                        ))
+                                    .toList(),
+                              ),
+                              actions: <Widget>[
+                                TextButton(
+                                  onPressed: () {
+                                    Navigator.of(context).pop();
+                                  },
+                                  child: const Text('OK'),
+                                ),
+                              ],
+                            );
+                          },
+                        );
                       }
                     },
                     itemBuilder: (BuildContext context) {
@@ -189,12 +213,12 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
                                 child: Text('Dictionaries'),
                               ),
                               const PopupMenuItem(
-                                value: 'check_external_storage',
-                                child: Text('Check External Storage'),
-                              ),
-                              const PopupMenuItem(
                                 value: 'cancel_all_pending',
                                 child: Text('Cancel All Pending'),
+                              ),
+                              const PopupMenuItem(
+                                value: 'check_storage_paths',
+                                child: Text('Check Storage Paths'),
                               ),
                             ]
                           : [
@@ -204,7 +228,8 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
                               ),
                               if (selectedCollections.length == 1 &&
                                   selectedCollections[0].isOnExternalStorage !=
-                                      true)
+                                      true &&
+                                  widget.externalStorageDb != null)
                                 const PopupMenuItem(
                                   value: 'copy_to_external_storage',
                                   child: Text('Copy to External Storage'),

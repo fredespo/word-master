@@ -123,9 +123,6 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
                             ),
                           ),
                         );
-                      } else if (value == 'check_external_storage') {
-                        await ExternalStorageChecker.checkExternalStorage(
-                            context);
                       } else if (value == 'cancel_all_pending') {
                         var pendingInternal = getPending(widget.db);
                         for (WordCollection wordCollection in pendingInternal) {
@@ -187,10 +184,6 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
                               const PopupMenuItem(
                                 value: 'dictionary_data',
                                 child: Text('Dictionaries'),
-                              ),
-                              const PopupMenuItem(
-                                value: 'check_external_storage',
-                                child: Text('Check External Storage'),
                               ),
                               const PopupMenuItem(
                                 value: 'cancel_all_pending',

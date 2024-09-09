@@ -204,7 +204,8 @@ class _WordCollectionManagerState extends State<WordCollectionManager> {
                               ),
                               if (selectedCollections.length == 1 &&
                                   selectedCollections[0].isOnExternalStorage !=
-                                      true)
+                                      true &&
+                                  widget.externalStorageDb != null)
                                 const PopupMenuItem(
                                   value: 'copy_to_external_storage',
                                   child: Text('Copy to External Storage'),

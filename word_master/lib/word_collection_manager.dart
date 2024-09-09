@@ -15,7 +15,6 @@ import 'package:word_master/word_collections_list.dart';
 
 import 'data_migration_widget.dart';
 import 'dictionary_data_manager.dart';
-import 'external_storage_checker.dart';
 import 'main.dart';
 
 class WordCollectionManager extends StatefulWidget {

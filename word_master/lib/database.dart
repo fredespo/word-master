@@ -12,18 +12,21 @@ import 'imported_dictionary.dart';
 import 'package:path_provider/path_provider.dart';
 
 class Database {
+  static List<SchemaObject> schemas = [
+    DictionaryEntry.schema,
+    WordCollectionData.schema,
+    Dictionary.schema,
+    ImportedDictionary.schema,
+    WordCollectionEntry.schema,
+    WordCollection.schema,
+    WordCollectionAddRandEntriesJob.schema
+  ];
+  static int schemaVersion = 14;
+
   static Realm getDbConnection() {
     return Realm(Configuration.local(
-      [
-        DictionaryEntry.schema,
-        WordCollectionData.schema,
-        Dictionary.schema,
-        ImportedDictionary.schema,
-        WordCollectionEntry.schema,
-        WordCollection.schema,
-        WordCollectionAddRandEntriesJob.schema
-      ],
-      schemaVersion: 14,
+      schemas,
+      schemaVersion: schemaVersion,
     ));
   }
 
@@ -33,9 +36,12 @@ class Database {
     }
 
     try {
-      var dir = await getExternalStorageDirectory();
-      if (dir == null) return null;
-      return dir.path;
+      var dirs = await getExternalStorageDirectories();
+      if (dirs == null || dirs.length < 2) {
+        return null;
+      }
+
+      return dirs[1].path;
     } catch (e) {
       return null;
     }
@@ -50,16 +56,8 @@ class Database {
   static Realm? getDbFromDir(Directory dir) {
     try {
       return Realm(Configuration.local(
-        [
-          DictionaryEntry.schema,
-          WordCollectionData.schema,
-          Dictionary.schema,
-          ImportedDictionary.schema,
-          WordCollectionEntry.schema,
-          WordCollection.schema,
-          WordCollectionAddRandEntriesJob.schema
-        ],
-        schemaVersion: 14,
+        schemas,
+        schemaVersion: schemaVersion,
         path: '${dir.path}/word_master.realm',
       ));
     } catch (e) {

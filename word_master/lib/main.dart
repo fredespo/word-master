@@ -28,10 +28,10 @@ class MainApp extends StatefulWidget {
 
 class _MainAppState extends State<MainApp> {
   final Realm db = Database.getDbConnection();
-  String? externalStoragePath;
   Realm? externalStorageDb;
   String migrationError = '';
   late WordCollectionCreator wordCollectionCreator;
+  ValueNotifier<String?> errorMessage = ValueNotifier(null);
 
   @override
   void initState() {
@@ -45,8 +45,13 @@ class _MainAppState extends State<MainApp> {
     final String? extPath = await Database.getExternalStoragePath();
     setState(() {
       WordCollectionCreator.watchForWordCollectionsToCreateInBg(extPath);
-      externalStorageDb =
-          extPath != null ? Database.getDbFromDir(Directory(extPath)) : null;
+      try {
+        externalStorageDb =
+            extPath != null ? Database.getDbFromDir(Directory(extPath)) : null;
+      } catch (e) {
+        errorMessage.value = e.toString();
+        externalStorageDb = null;
+      }
     });
   }
 
@@ -82,33 +87,45 @@ class _MainAppState extends State<MainApp> {
   @override
   Widget build(BuildContext context) {
     if (migrationError.isNotEmpty) {
-      return _migrationError();
+      return _errorMessage(migrationError, () {
+        setState(() {
+          migrationError = '';
+        });
+      });
     }
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: WordCollectionManager(
-        db: db,
-        externalStorageDb: externalStorageDb,
-        title: 'Word Master',
-        onTapWordCollection:
-            (BuildContext context, WordCollection wordCollection) {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => WordCollectionTabs(
+
+    return ValueListenableBuilder(
+      valueListenable: errorMessage,
+      builder: (context, value, child) => value == null
+          ? MaterialApp(
+              debugShowCheckedModeBanner: false,
+              home: WordCollectionManager(
                 db: db,
                 externalStorageDb: externalStorageDb,
-                initialWordCollections: [wordCollection],
+                title: 'Word Master',
+                onTapWordCollection:
+                    (BuildContext context, WordCollection wordCollection) {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => WordCollectionTabs(
+                        db: db,
+                        externalStorageDb: externalStorageDb,
+                        initialWordCollections: [wordCollection],
+                      ),
+                    ),
+                  );
+                },
+                wordCollectionCreator: wordCollectionCreator,
               ),
-            ),
-          );
-        },
-        wordCollectionCreator: wordCollectionCreator,
-      ),
+            )
+          : _errorMessage(value, () {
+              errorMessage.value = null;
+            }),
     );
   }
 
-  Widget _migrationError() {
+  Widget _errorMessage(String message, Function() onDismiss) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       home: Scaffold(
@@ -120,17 +137,15 @@ class _MainAppState extends State<MainApp> {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text("Migration Error:", style: TextStyle(fontSize: 20)),
+              const Text("Error:", style: TextStyle(fontSize: 20)),
               Padding(
                 padding: const EdgeInsets.all(20),
-                child: Text(migrationError),
+                child: Text(message),
               ),
               const SizedBox(height: 20),
               ElevatedButton(
                 onPressed: () {
-                  setState(() {
-                    migrationError = '';
-                  });
+                  onDismiss();
                 },
                 child: const Text('Continue'),
               ),

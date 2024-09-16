@@ -54,15 +54,11 @@ class Database {
   }
 
   static Realm? getDbFromDir(Directory dir) {
-    try {
-      return Realm(Configuration.local(
-        schemas,
-        schemaVersion: schemaVersion,
-        path: '${dir.path}/word_master.realm',
-      ));
-    } catch (e) {
-      return null;
-    }
+    return Realm(Configuration.local(
+      schemas,
+      schemaVersion: schemaVersion,
+      path: '${dir.path}/word_master.realm',
+    ));
   }
 
   static Realm selectDb(

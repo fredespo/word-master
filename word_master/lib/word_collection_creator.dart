@@ -25,8 +25,13 @@ class WordCollectionCreator {
     String? extDir,
   ) async {
     Realm db = Database.getDbConnection();
-    Realm? externalStorageDb =
-        extDir != null ? Database.getDbFromDir(Directory(extDir)) : null;
+    Realm? externalStorageDb = null;
+    try {
+      externalStorageDb =
+          extDir != null ? Database.getDbFromDir(Directory(extDir)) : null;
+    } catch (e) {
+      externalStorageDb = null;
+    }
 
     handleLeftover(db);
 
